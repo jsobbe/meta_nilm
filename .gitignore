@@ -129,4 +129,4 @@ dmypy.json
 .pyre/
 
 # nilm data files
-.h5
+*.h5
