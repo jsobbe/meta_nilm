@@ -210,7 +210,7 @@ def _make_nets(variables, config, net_assignments):
         subset = [name_to_index[name] for name in names]
         keys.append(key)
         subsets.append(subset)
-        print("Net: {}, Subset: {}".format(key, subset))
+#         print("Net: {}, Subset: {}".format(key, subset))
 
   # subsets should be a list of disjoint subsets (as lists!) of the variables
   # and nets should be a list of networks to apply to each subset.
@@ -325,12 +325,12 @@ class MetaOptimizer(object):
     # loss will never be evaluated.
     # pdb.set_trace()
     
-    x, constants = _get_variables(make_loss)
+    x, constants = _get_variables(make_loss) # Why does this return empty variables???!
 
-    print("Optimizee variables")
-    print([op.name for op in x])
-    print("Problem variables")
-    print([op.name for op in constants])
+#     print("Optimizee variables")
+#     print([op.name for op in x])
+#     print("Problem variables")
+#     print([op.name for op in constants])
 
     # create scale placeholder here
     scale = []
@@ -340,8 +340,9 @@ class MetaOptimizer(object):
     # Create the optimizer networks and find the subsets of variables to assign
     # to each optimizer.
     nets, net_keys, subsets = _make_nets(x, self._config, net_assignments)
-    print('nets', nets)
-    print('subsets', subsets)
+#     print('nets', nets)
+#     print('net_keys', net_keys)
+#     print('subsets', subsets)
     # Store the networks so we can save them later.
     self._nets = nets
 
@@ -350,6 +351,7 @@ class MetaOptimizer(object):
     with tf.name_scope("states"):
       for i, (subset, key) in enumerate(zip(subsets, net_keys)):
         net = nets[key]
+#         print('net: ', str(net))
         with tf.name_scope("state_{}".format(i)):
           state.append(_nested_variable(
               [net.initial_state_for_inputs(x[j], dtype=tf.float32)
@@ -369,6 +371,8 @@ class MetaOptimizer(object):
           gradients = [tf.stop_gradient(g) for g in gradients]
 
       with tf.name_scope("deltas"):
+#         print('gradients:',str(gradients))
+#         print('state:',str(state))
         deltas, state_next = zip(*[net(g, s) for g, s in zip(gradients, state)])
         state_next = _nested_tuple(state_next)
         state_next = list(state_next)
@@ -376,7 +380,7 @@ class MetaOptimizer(object):
       return deltas, state_next
 
     def time_step(t, fx_array, x, state):
-      """While loop body."""
+      """While loop body. (called in 409)"""
       x_next = list(x)
       state_next = []
 
@@ -532,6 +536,7 @@ class MetaOptimizer(object):
     Args:
       make_loss: Callable which returns the optimizee loss; note that this
           should create its ops in the default graph.
+          Aka the problem function.
       len_unroll: Number of steps to unroll.
       learning_rate: Learning rate for the Adam optimizer.
       **kwargs: keyword arguments forwarded to meta_loss.
@@ -539,7 +544,6 @@ class MetaOptimizer(object):
     Returns:
       namedtuple containing (step, update, reset, fx, x), ...
     """
-
     info, scale, x, constants, subsets, loss_mt, update_mt, reset_mt, mt_labels, mt_inputs = \
         self.meta_loss(make_loss, len_unroll, **kwargs)
     optimizer = tf.train.AdamOptimizer(learning_rate)

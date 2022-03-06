@@ -40,7 +40,7 @@ flags.DEFINE_integer("num_epochs", 10000, "Number of training epochs.")
 flags.DEFINE_integer("evaluation_period", 100, "Evaluation period.")
 flags.DEFINE_integer("evaluation_epochs", 20, "Number of evaluation epochs.")
 flags.DEFINE_integer("num_steps", 100, "Number of optimization steps per epoch.")
-flags.DEFINE_integer("unroll_length", 20, "Meta-optimizer unroll length.")
+flags.DEFINE_integer("unroll_length", 5, "Meta-optimizer unroll length.") #Default was 20
 flags.DEFINE_float("learning_rate", 0.001, "Learning rate.")
 flags.DEFINE_boolean("second_derivatives", False, "Use second derivatives.")
 
@@ -165,6 +165,7 @@ def main(_):
                                             data=data_e,
                                             label_pl=mt_labels[task_i],
                                             input_pl=mt_inputs[task_i])
+            print('EPOCH: ', e)
             print ("training_loss={}".format(cost))
 
             # Evaluation.

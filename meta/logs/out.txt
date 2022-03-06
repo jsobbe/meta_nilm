@@ -1,0 +1,951 @@
+............... Loading Data for training ...................
+Loading data for  redd  dataset
+Loading building ...  1
+Loading data for meter ElecMeterID(instance=1, building=1, dataset='REDD')     Loading data for meter ElecMeterID(instance=2, building=1, dataset='REDD')     
+Done loading data all meters for this chunk.
+Dropping missing values
+18984
+
+inputs:  <tf.Variable 'conv_1/weights:0' shape=(10, 599, 30) dtype=float32_ref>
+reshaped:  Tensor("states/state_0/Reshape:0", shape=(179700, 1), dtype=float32)
+batch_size:  179700
+
+inputs:  <tf.Variable 'conv_1/biases:0' shape=(30,) dtype=float32_ref>
+reshaped:  Tensor("states/state_0/Reshape_1:0", shape=(30, 1), dtype=float32)
+batch_size:  30
+
+inputs:  <tf.Variable 'conv_2/weights:0' shape=(8, 30, 30) dtype=float32_ref>
+reshaped:  Tensor("states/state_0/Reshape_2:0", shape=(7200, 1), dtype=float32)
+batch_size:  7200
+
+inputs:  <tf.Variable 'conv_2/biases:0' shape=(30,) dtype=float32_ref>
+reshaped:  Tensor("states/state_0/Reshape_3:0", shape=(30, 1), dtype=float32)
+batch_size:  30
+
+inputs:  <tf.Variable 'conv_3/weights:0' shape=(6, 30, 40) dtype=float32_ref>
+reshaped:  Tensor("states/state_0/Reshape_4:0", shape=(7200, 1), dtype=float32)
+batch_size:  7200
+
+inputs:  <tf.Variable 'conv_3/biases:0' shape=(40,) dtype=float32_ref>
+reshaped:  Tensor("states/state_0/Reshape_5:0", shape=(40, 1), dtype=float32)
+batch_size:  40
+
+inputs:  <tf.Variable 'conv_4/weights:0' shape=(5, 40, 50) dtype=float32_ref>
+reshaped:  Tensor("states/state_0/Reshape_6:0", shape=(10000, 1), dtype=float32)
+batch_size:  10000
+
+inputs:  <tf.Variable 'conv_4/biases:0' shape=(50,) dtype=float32_ref>
+reshaped:  Tensor("states/state_0/Reshape_7:0", shape=(50, 1), dtype=float32)
+batch_size:  50
+
+inputs:  <tf.Variable 'conv_5/weights:0' shape=(5, 50, 50) dtype=float32_ref>
+reshaped:  Tensor("states/state_0/Reshape_8:0", shape=(12500, 1), dtype=float32)
+batch_size:  12500
+
+inputs:  <tf.Variable 'conv_5/biases:0' shape=(50,) dtype=float32_ref>
+reshaped:  Tensor("states/state_0/Reshape_9:0", shape=(50, 1), dtype=float32)
+batch_size:  50
+
+inputs:  <tf.Variable 'dense_1/fc_weights:0' shape=(50, 1024) dtype=float32_ref>
+reshaped:  Tensor("states/state_0/Reshape_10:0", shape=(51200, 1), dtype=float32)
+batch_size:  51200
+
+inputs:  <tf.Variable 'dense_1/fc_bias:0' shape=(1024,) dtype=float32_ref>
+reshaped:  Tensor("states/state_0/Reshape_11:0", shape=(1024, 1), dtype=float32)
+batch_size:  1024
+
+inputs:  <tf.Variable 'dense_2/fc_weights:0' shape=(1024, 1) dtype=float32_ref>
+reshaped:  Tensor("states/state_0/Reshape_12:0", shape=(1024, 1), dtype=float32)
+batch_size:  1024
+
+inputs:  <tf.Variable 'dense_2/fc_bias:0' shape=(1,) dtype=float32_ref>
+reshaped:  Tensor("states/state_0/Reshape_13:0", shape=(1, 1), dtype=float32)
+batch_size:  1
+18984
+18984
+number of parameters = 270049
+Optimizer 'cw' variables
+[<tf.Variable 'vars_optimizer/cw_deep_lstm/lstm_1/w_gates:0' shape=(22, 80) dtype=float32_ref>, <tf.Variable 'vars_optimizer/cw_deep_lstm/lstm_1/b_gates:0' shape=(80,) dtype=float32_ref>, <tf.Variable 'vars_optimizer/cw_deep_lstm/lstm_2/w_gates:0' shape=(40, 80) dtype=float32_ref>, <tf.Variable 'vars_optimizer/cw_deep_lstm/lstm_2/b_gates:0' shape=(80,) dtype=float32_ref>, <tf.Variable 'vars_optimizer/cw_deep_lstm/linear/w:0' shape=(20, 1) dtype=float32_ref>, <tf.Variable 'vars_optimizer/cw_deep_lstm/linear/b:0' shape=(1,) dtype=float32_ref>]
+num_unrolls:  14
+No random scale
+EPOCH:  0
+training_loss=0.9198480844497681
+num_unrolls:  14
+No random scale
+EPOCH:  1
+training_loss=1.0650975704193115
+num_unrolls:  14
+No random scale
+EPOCH:  2
+training_loss=0.8330850601196289
+num_unrolls:  14
+No random scale
+EPOCH:  3
+training_loss=1.2365458011627197
+num_unrolls:  14
+No random scale
+EPOCH:  4
+training_loss=0.7530629634857178
+num_unrolls:  14
+No random scale
+EPOCH:  5
+training_loss=0.9251080751419067
+num_unrolls:  14
+No random scale
+EPOCH:  6
+training_loss=0.7778385281562805
+num_unrolls:  14
+No random scale
+EPOCH:  7
+training_loss=1.0179479122161865
+num_unrolls:  14
+No random scale
+EPOCH:  8
+training_loss=1.035477876663208
+num_unrolls:  14
+No random scale
+EPOCH:  9
+training_loss=0.9886811375617981
+num_unrolls:  14
+No random scale
+EPOCH:  10
+training_loss=1.164167881011963
+num_unrolls:  14
+No random scale
+EPOCH:  11
+training_loss=0.6507742404937744
+num_unrolls:  14
+No random scale
+EPOCH:  12
+training_loss=0.8292355537414551
+num_unrolls:  14
+No random scale
+EPOCH:  13
+training_loss=1.3120090961456299
+num_unrolls:  14
+No random scale
+EPOCH:  14
+training_loss=1.1683299541473389
+num_unrolls:  14
+No random scale
+EPOCH:  15
+training_loss=1.4090900421142578
+num_unrolls:  14
+No random scale
+EPOCH:  16
+training_loss=0.925520658493042
+num_unrolls:  14
+No random scale
+EPOCH:  17
+training_loss=0.8506507873535156
+num_unrolls:  14
+No random scale
+EPOCH:  18
+training_loss=0.9897840023040771
+num_unrolls:  14
+No random scale
+EPOCH:  19
+training_loss=0.9982709288597107
+num_unrolls:  14
+No random scale
+EPOCH:  20
+training_loss=0.8039563894271851
+num_unrolls:  14
+No random scale
+EPOCH:  21
+training_loss=0.6874799728393555
+num_unrolls:  14
+No random scale
+EPOCH:  22
+training_loss=0.9784319400787354
+num_unrolls:  14
+No random scale
+EPOCH:  23
+training_loss=1.0059833526611328
+num_unrolls:  14
+No random scale
+EPOCH:  24
+training_loss=1.0057470798492432
+num_unrolls:  14
+No random scale
+EPOCH:  25
+training_loss=1.3832252025604248
+num_unrolls:  14
+No random scale
+EPOCH:  26
+training_loss=1.0341925621032715
+num_unrolls:  14
+No random scale
+EPOCH:  27
+training_loss=1.450984239578247
+num_unrolls:  14
+No random scale
+EPOCH:  28
+training_loss=0.8942034840583801
+num_unrolls:  14
+No random scale
+EPOCH:  29
+training_loss=1.062163233757019
+num_unrolls:  14
+No random scale
+EPOCH:  30
+training_loss=1.0265885591506958
+num_unrolls:  14
+No random scale
+EPOCH:  31
+training_loss=0.8478119969367981
+num_unrolls:  14
+No random scale
+EPOCH:  32
+training_loss=1.0002968311309814
+num_unrolls:  14
+No random scale
+EPOCH:  33
+training_loss=1.1542487144470215
+num_unrolls:  14
+No random scale
+EPOCH:  34
+training_loss=0.9110004901885986
+num_unrolls:  14
+No random scale
+EPOCH:  35
+training_loss=1.0117610692977905
+num_unrolls:  14
+No random scale
+EPOCH:  36
+training_loss=0.9496961236000061
+num_unrolls:  14
+No random scale
+EPOCH:  37
+training_loss=1.0208262205123901
+num_unrolls:  14
+No random scale
+EPOCH:  38
+training_loss=1.2928118705749512
+num_unrolls:  14
+No random scale
+EPOCH:  39
+training_loss=0.752798318862915
+num_unrolls:  14
+No random scale
+EPOCH:  40
+training_loss=1.0162241458892822
+num_unrolls:  14
+No random scale
+EPOCH:  41
+training_loss=0.9293040037155151
+num_unrolls:  14
+No random scale
+EPOCH:  42
+training_loss=1.0967028141021729
+num_unrolls:  14
+No random scale
+EPOCH:  43
+training_loss=0.9570479393005371
+num_unrolls:  14
+No random scale
+EPOCH:  44
+training_loss=0.8753958344459534
+num_unrolls:  14
+No random scale
+EPOCH:  45
+training_loss=0.9889626502990723
+num_unrolls:  14
+No random scale
+EPOCH:  46
+training_loss=0.8175620436668396
+num_unrolls:  14
+No random scale
+EPOCH:  47
+training_loss=1.042048454284668
+num_unrolls:  14
+No random scale
+EPOCH:  48
+training_loss=0.713654637336731
+num_unrolls:  14
+No random scale
+EPOCH:  49
+training_loss=0.7556049823760986
+num_unrolls:  14
+No random scale
+EPOCH:  50
+training_loss=0.8414406776428223
+num_unrolls:  14
+No random scale
+EPOCH:  51
+training_loss=1.0902209281921387
+num_unrolls:  14
+No random scale
+EPOCH:  52
+training_loss=1.1363757848739624
+num_unrolls:  14
+No random scale
+EPOCH:  53
+training_loss=0.9824239611625671
+num_unrolls:  14
+No random scale
+EPOCH:  54
+training_loss=1.6115384101867676
+num_unrolls:  14
+No random scale
+EPOCH:  55
+training_loss=0.8612744808197021
+num_unrolls:  14
+No random scale
+EPOCH:  56
+training_loss=1.0867195129394531
+num_unrolls:  14
+No random scale
+EPOCH:  57
+training_loss=1.4209890365600586
+num_unrolls:  14
+No random scale
+EPOCH:  58
+training_loss=1.184293270111084
+num_unrolls:  14
+No random scale
+EPOCH:  59
+training_loss=1.182771921157837
+num_unrolls:  14
+No random scale
+EPOCH:  60
+training_loss=1.0879929065704346
+num_unrolls:  14
+No random scale
+EPOCH:  61
+training_loss=0.9959595203399658
+num_unrolls:  14
+No random scale
+EPOCH:  62
+training_loss=1.4032700061798096
+num_unrolls:  14
+No random scale
+EPOCH:  63
+training_loss=0.8004451394081116
+num_unrolls:  14
+No random scale
+EPOCH:  64
+training_loss=0.8025675415992737
+num_unrolls:  14
+No random scale
+EPOCH:  65
+training_loss=1.008739948272705
+num_unrolls:  14
+No random scale
+EPOCH:  66
+training_loss=0.8832268714904785
+num_unrolls:  14
+No random scale
+EPOCH:  67
+training_loss=0.9902627468109131
+num_unrolls:  14
+No random scale
+EPOCH:  68
+training_loss=1.29684317111969
+num_unrolls:  14
+No random scale
+EPOCH:  69
+training_loss=1.3558233976364136
+num_unrolls:  14
+No random scale
+EPOCH:  70
+training_loss=1.392805814743042
+num_unrolls:  14
+No random scale
+EPOCH:  71
+training_loss=0.914993405342102
+num_unrolls:  14
+No random scale
+EPOCH:  72
+training_loss=0.9460744857788086
+num_unrolls:  14
+No random scale
+EPOCH:  73
+training_loss=0.8351099491119385
+num_unrolls:  14
+No random scale
+EPOCH:  74
+training_loss=1.054085373878479
+num_unrolls:  14
+No random scale
+EPOCH:  75
+training_loss=1.082283854484558
+num_unrolls:  14
+No random scale
+EPOCH:  76
+training_loss=0.879326343536377
+num_unrolls:  14
+No random scale
+EPOCH:  77
+training_loss=1.2936201095581055
+num_unrolls:  14
+No random scale
+EPOCH:  78
+training_loss=1.2208627462387085
+num_unrolls:  14
+No random scale
+EPOCH:  79
+training_loss=0.8212231397628784
+num_unrolls:  14
+No random scale
+EPOCH:  80
+training_loss=1.17838716506958
+num_unrolls:  14
+No random scale
+EPOCH:  81
+training_loss=0.9394820928573608
+num_unrolls:  14
+No random scale
+EPOCH:  82
+training_loss=1.095755934715271
+num_unrolls:  14
+No random scale
+EPOCH:  83
+training_loss=1.1479406356811523
+num_unrolls:  14
+No random scale
+EPOCH:  84
+training_loss=0.8695257902145386
+num_unrolls:  14
+No random scale
+EPOCH:  85
+training_loss=1.1971924304962158
+num_unrolls:  14
+No random scale
+EPOCH:  86
+training_loss=1.0355799198150635
+num_unrolls:  14
+No random scale
+EPOCH:  87
+training_loss=1.0439659357070923
+num_unrolls:  14
+No random scale
+EPOCH:  88
+training_loss=0.9674376249313354
+num_unrolls:  14
+No random scale
+EPOCH:  89
+training_loss=1.5208985805511475
+num_unrolls:  14
+No random scale
+EPOCH:  90
+training_loss=0.9387231469154358
+num_unrolls:  14
+No random scale
+EPOCH:  91
+training_loss=1.0386364459991455
+num_unrolls:  14
+No random scale
+EPOCH:  92
+training_loss=1.3772404193878174
+num_unrolls:  14
+No random scale
+EPOCH:  93
+training_loss=1.03034245967865
+num_unrolls:  14
+No random scale
+EPOCH:  94
+training_loss=0.7548849582672119
+num_unrolls:  14
+No random scale
+EPOCH:  95
+training_loss=1.0966912508010864
+num_unrolls:  14
+No random scale
+EPOCH:  96
+training_loss=1.118513822555542
+num_unrolls:  14
+No random scale
+EPOCH:  97
+training_loss=0.931144654750824
+num_unrolls:  14
+No random scale
+EPOCH:  98
+training_loss=1.011780023574829
+num_unrolls:  14
+No random scale
+EPOCH:  99
+training_loss=0.7393003106117249
+num_unrolls:  14
+No random scale
+num_unrolls:  14
+No random scale
+num_unrolls:  14
+No random scale
+num_unrolls:  14
+No random scale
+num_unrolls:  14
+No random scale
+num_unrolls:  14
+No random scale
+num_unrolls:  14
+No random scale
+num_unrolls:  14
+No random scale
+num_unrolls:  14
+No random scale
+num_unrolls:  14
+No random scale
+num_unrolls:  14
+No random scale
+num_unrolls:  14
+No random scale
+num_unrolls:  14
+No random scale
+num_unrolls:  14
+No random scale
+num_unrolls:  14
+No random scale
+num_unrolls:  14
+No random scale
+num_unrolls:  14
+No random scale
+num_unrolls:  14
+No random scale
+num_unrolls:  14
+No random scale
+num_unrolls:  14
+No random scale
+epoch=99, num_steps=70, eval_loss=0.9356297820806503
+Saving optimizer of epoch 100...
+num_unrolls:  14
+No random scale
+EPOCH:  100
+training_loss=0.7876313328742981
+num_unrolls:  14
+No random scale
+EPOCH:  101
+training_loss=1.2252123355865479
+num_unrolls:  14
+No random scale
+EPOCH:  102
+training_loss=1.0757373571395874
+num_unrolls:  14
+No random scale
+EPOCH:  103
+training_loss=1.0042554140090942
+num_unrolls:  14
+No random scale
+EPOCH:  104
+training_loss=0.6407883167266846
+num_unrolls:  14
+No random scale
+EPOCH:  105
+training_loss=1.002336025238037
+num_unrolls:  14
+No random scale
+EPOCH:  106
+training_loss=0.8125931024551392
+num_unrolls:  14
+No random scale
+EPOCH:  107
+training_loss=0.7592685222625732
+num_unrolls:  14
+No random scale
+EPOCH:  108
+training_loss=1.3034300804138184
+num_unrolls:  14
+No random scale
+EPOCH:  109
+training_loss=1.0490148067474365
+num_unrolls:  14
+No random scale
+EPOCH:  110
+training_loss=1.217811107635498
+num_unrolls:  14
+No random scale
+EPOCH:  111
+training_loss=0.8580762147903442
+num_unrolls:  14
+No random scale
+EPOCH:  112
+training_loss=0.8790463209152222
+num_unrolls:  14
+No random scale
+EPOCH:  113
+training_loss=0.9184035062789917
+num_unrolls:  14
+No random scale
+EPOCH:  114
+training_loss=0.8951535224914551
+num_unrolls:  14
+No random scale
+EPOCH:  115
+training_loss=1.1141681671142578
+num_unrolls:  14
+No random scale
+EPOCH:  116
+training_loss=1.1165173053741455
+num_unrolls:  14
+No random scale
+EPOCH:  117
+training_loss=0.8128078579902649
+num_unrolls:  14
+No random scale
+EPOCH:  118
+training_loss=1.019775390625
+num_unrolls:  14
+No random scale
+EPOCH:  119
+training_loss=0.942347526550293
+num_unrolls:  14
+No random scale
+EPOCH:  120
+training_loss=1.1715129613876343
+num_unrolls:  14
+No random scale
+EPOCH:  121
+training_loss=0.7879109382629395
+num_unrolls:  14
+No random scale
+EPOCH:  122
+training_loss=1.2560205459594727
+num_unrolls:  14
+No random scale
+EPOCH:  123
+training_loss=1.014134407043457
+num_unrolls:  14
+No random scale
+EPOCH:  124
+training_loss=1.213152289390564
+num_unrolls:  14
+No random scale
+EPOCH:  125
+training_loss=0.9817736148834229
+num_unrolls:  14
+No random scale
+EPOCH:  126
+training_loss=1.0035574436187744
+num_unrolls:  14
+No random scale
+EPOCH:  127
+training_loss=1.0603058338165283
+num_unrolls:  14
+No random scale
+EPOCH:  128
+training_loss=1.0632660388946533
+num_unrolls:  14
+No random scale
+EPOCH:  129
+training_loss=1.1604822874069214
+num_unrolls:  14
+No random scale
+EPOCH:  130
+training_loss=1.1902775764465332
+num_unrolls:  14
+No random scale
+EPOCH:  131
+training_loss=0.9061607718467712
+num_unrolls:  14
+No random scale
+EPOCH:  132
+training_loss=0.720183253288269
+num_unrolls:  14
+No random scale
+EPOCH:  133
+training_loss=1.1536574363708496
+num_unrolls:  14
+No random scale
+EPOCH:  134
+training_loss=1.2827086448669434
+num_unrolls:  14
+No random scale
+EPOCH:  135
+training_loss=1.181992530822754
+num_unrolls:  14
+No random scale
+EPOCH:  136
+training_loss=1.0956141948699951
+num_unrolls:  14
+No random scale
+EPOCH:  137
+training_loss=1.031257152557373
+num_unrolls:  14
+No random scale
+EPOCH:  138
+training_loss=0.9043149352073669
+num_unrolls:  14
+No random scale
+EPOCH:  139
+training_loss=0.9648754596710205
+num_unrolls:  14
+No random scale
+EPOCH:  140
+training_loss=1.0821657180786133
+num_unrolls:  14
+No random scale
+EPOCH:  141
+training_loss=0.6325066685676575
+num_unrolls:  14
+No random scale
+EPOCH:  142
+training_loss=0.7881243228912354
+num_unrolls:  14
+No random scale
+EPOCH:  143
+training_loss=0.9162386059761047
+num_unrolls:  14
+No random scale
+EPOCH:  144
+training_loss=1.0182164907455444
+num_unrolls:  14
+No random scale
+EPOCH:  145
+training_loss=0.7839479446411133
+num_unrolls:  14
+No random scale
+EPOCH:  146
+training_loss=1.5761688947677612
+num_unrolls:  14
+No random scale
+EPOCH:  147
+training_loss=0.757067084312439
+num_unrolls:  14
+No random scale
+EPOCH:  148
+training_loss=0.8516921997070312
+num_unrolls:  14
+No random scale
+EPOCH:  149
+training_loss=0.8034771680831909
+num_unrolls:  14
+No random scale
+EPOCH:  150
+training_loss=1.1359984874725342
+num_unrolls:  14
+No random scale
+EPOCH:  151
+training_loss=1.392574429512024
+num_unrolls:  14
+No random scale
+EPOCH:  152
+training_loss=1.5154032707214355
+num_unrolls:  14
+No random scale
+EPOCH:  153
+training_loss=1.0060840845108032
+num_unrolls:  14
+No random scale
+EPOCH:  154
+training_loss=0.8744275569915771
+num_unrolls:  14
+No random scale
+EPOCH:  155
+training_loss=1.0325298309326172
+num_unrolls:  14
+No random scale
+EPOCH:  156
+training_loss=1.1876060962677002
+num_unrolls:  14
+No random scale
+EPOCH:  157
+training_loss=1.1012370586395264
+num_unrolls:  14
+No random scale
+EPOCH:  158
+training_loss=0.8513004779815674
+num_unrolls:  14
+No random scale
+EPOCH:  159
+training_loss=1.2031887769699097
+num_unrolls:  14
+No random scale
+EPOCH:  160
+training_loss=0.6186604499816895
+num_unrolls:  14
+No random scale
+EPOCH:  161
+training_loss=1.291891098022461
+num_unrolls:  14
+No random scale
+EPOCH:  162
+training_loss=0.677884042263031
+num_unrolls:  14
+No random scale
+EPOCH:  163
+training_loss=0.906761884689331
+num_unrolls:  14
+No random scale
+EPOCH:  164
+training_loss=1.2521469593048096
+num_unrolls:  14
+No random scale
+EPOCH:  165
+training_loss=1.1035221815109253
+num_unrolls:  14
+No random scale
+EPOCH:  166
+training_loss=1.0921599864959717
+num_unrolls:  14
+No random scale
+EPOCH:  167
+training_loss=1.3132820129394531
+num_unrolls:  14
+No random scale
+EPOCH:  168
+training_loss=0.8623568415641785
+num_unrolls:  14
+No random scale
+EPOCH:  169
+training_loss=1.1830668449401855
+num_unrolls:  14
+No random scale
+EPOCH:  170
+training_loss=1.0208144187927246
+num_unrolls:  14
+No random scale
+EPOCH:  171
+training_loss=1.1947318315505981
+num_unrolls:  14
+No random scale
+EPOCH:  172
+training_loss=0.8666439652442932
+num_unrolls:  14
+No random scale
+EPOCH:  173
+training_loss=0.9754244089126587
+num_unrolls:  14
+No random scale
+EPOCH:  174
+training_loss=0.9549534320831299
+num_unrolls:  14
+No random scale
+EPOCH:  175
+training_loss=1.1791932582855225
+num_unrolls:  14
+No random scale
+EPOCH:  176
+training_loss=1.0355267524719238
+num_unrolls:  14
+No random scale
+EPOCH:  177
+training_loss=1.0330582857131958
+num_unrolls:  14
+No random scale
+EPOCH:  178
+training_loss=0.7371193766593933
+num_unrolls:  14
+No random scale
+EPOCH:  179
+training_loss=0.6227648258209229
+num_unrolls:  14
+No random scale
+EPOCH:  180
+training_loss=1.26170015335083
+num_unrolls:  14
+No random scale
+EPOCH:  181
+training_loss=1.0485243797302246
+num_unrolls:  14
+No random scale
+EPOCH:  182
+training_loss=0.911624550819397
+num_unrolls:  14
+No random scale
+EPOCH:  183
+training_loss=1.0945686101913452
+num_unrolls:  14
+No random scale
+EPOCH:  184
+training_loss=1.0522814989089966
+num_unrolls:  14
+No random scale
+EPOCH:  185
+training_loss=0.9019355773925781
+num_unrolls:  14
+No random scale
+EPOCH:  186
+training_loss=1.3123750686645508
+num_unrolls:  14
+No random scale
+EPOCH:  187
+training_loss=1.2191762924194336
+num_unrolls:  14
+No random scale
+EPOCH:  188
+training_loss=0.9801520109176636
+num_unrolls:  14
+No random scale
+EPOCH:  189
+training_loss=0.8430347442626953
+num_unrolls:  14
+No random scale
+EPOCH:  190
+training_loss=1.1036038398742676
+num_unrolls:  14
+No random scale
+EPOCH:  191
+training_loss=1.2794699668884277
+num_unrolls:  14
+No random scale
+EPOCH:  192
+training_loss=0.9301760792732239
+num_unrolls:  14
+No random scale
+EPOCH:  193
+training_loss=0.9865807890892029
+num_unrolls:  14
+No random scale
+EPOCH:  194
+training_loss=0.996464729309082
+num_unrolls:  14
+No random scale
+EPOCH:  195
+training_loss=1.4838522672653198
+num_unrolls:  14
+No random scale
+EPOCH:  196
+training_loss=0.757976233959198
+num_unrolls:  14
+No random scale
+EPOCH:  197
+training_loss=1.2037677764892578
+num_unrolls:  14
+No random scale
+EPOCH:  198
+training_loss=0.7887446284294128
+num_unrolls:  14
+No random scale
+EPOCH:  199
+training_loss=0.7538925409317017
+num_unrolls:  14
+No random scale
+num_unrolls:  14
+No random scale
+num_unrolls:  14
+No random scale
+num_unrolls:  14
+No random scale
+num_unrolls:  14
+No random scale
+num_unrolls:  14
+No random scale
+num_unrolls:  14
+No random scale
+num_unrolls:  14
+No random scale
+num_unrolls:  14
+No random scale
+num_unrolls:  14
+No random scale
+num_unrolls:  14
+No random scale
+num_unrolls:  14
+No random scale
+num_unrolls:  14
+No random scale
+num_unrolls:  14
+No random scale
+num_unrolls:  14
+No random scale
+num_unrolls:  14
+No random scale
+num_unrolls:  14
+No random scale
+num_unrolls:  14
+No random scale
+num_unrolls:  14
+No random scale
+num_unrolls:  14
+No random scale
+epoch=199, num_steps=70, eval_loss=1.0087929904460906

@@ -233,6 +233,7 @@ class StandardDeepLSTM(Network):
 
   def initial_state_for_inputs(self, inputs, **kwargs):
     batch_size = inputs.get_shape().as_list()[0]
+    print('batch_size: ', batch_size)
     return self._rnn.initial_state(batch_size, **kwargs)
 
 
@@ -271,7 +272,10 @@ class CoordinateWiseDeepLSTM(StandardDeepLSTM):
     return tf.reshape(output, input_shape), next_state
 
   def initial_state_for_inputs(self, inputs, **kwargs):
+    print('')
+    print('inputs: ', str(inputs))
     reshaped_inputs = self._reshape_inputs(inputs)
+    print('reshaped: ', str(reshaped_inputs))
     return super(CoordinateWiseDeepLSTM, self).initial_state_for_inputs(
         reshaped_inputs, **kwargs)
 

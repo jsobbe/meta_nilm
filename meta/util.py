@@ -37,6 +37,7 @@ def run_epoch(sess, cost_op, ops, reset, num_unrolls,
   sess.run(reset)
   cost = None
   if task_i == -1:
+      print('num_unrolls: ', num_unrolls)
       if rd_scale:
         assert scale is not None
         randomized_scale = []
@@ -53,14 +54,24 @@ def run_epoch(sess, cost_op, ops, reset, num_unrolls,
         assign_func(k_value_list)
         # zip() creates tuples from items of both lists
         feed_rs = {p: v for p, v in zip(scale, randomized_scale)}
+        print('Random scale: ', str(scale))
       else:
+        print('No random scale')
         feed_rs = {}
       feed_dict = feed_rs
+#       print('PRE-LOOP')
       for i in xrange(num_unrolls):
+#         print('LOOP: ', i)
+#         print('cost_op: ', [cost_op])
+#         print('ops: ', ops)
+#         print('feed_dict: ', feed_dict)
         if step is not None:
             feed_dict[step] = i*unroll_len+1
-        cost = sess.run([cost_op] + ops, feed_dict=feed_dict)[0]
+        result = sess.run([cost_op] + ops, feed_dict=feed_dict)
+#         print('RESULT: ', str(result))
+        cost = result[0]
   else:
+#       print('EPOCH')
       assert data is not None
       assert input_pl is not None
       assert label_pl is not None
@@ -73,6 +84,7 @@ def run_epoch(sess, cost_op, ops, reset, num_unrolls,
           if step is not None:
               feed_dict[step] = ri * unroll_len + 1
           cost = sess.run([cost_op] + ops, feed_dict=feed_dict)[0]
+#           print('loss: ', cost)
   return timer() - start, cost
 
 
@@ -112,62 +124,68 @@ def get_default_net_config(path):
 
 def get_config(problem_name, path=None, mode=None, num_hidden_layer=None, net_name=None):
   """Returns problem configuration."""
-  if problem_name == "simple":
-    problem = problems.simple()
-    net_config = {"cw": {
-        "net": "CoordinateWiseDeepLSTM",
-        "net_options": {"layers": (), "initializer": "zeros"},
-        "net_path": path
-    }}
-    net_assignments = None
-  elif problem_name == "simple-multi":
-    problem = problems.simple_multi_optimizer()
-    net_config = {
-        "cw": {
-            "net": "CoordinateWiseDeepLSTM",
-            "net_options": {"layers": (), "initializer": "zeros"},
-            "net_path": path
-        },
-        "adam": {
-            "net": "Adam",
-            "net_options": {"learning_rate": 0.01}
-        }
-    }
-    net_assignments = [("cw", ["x_0"]), ("adam", ["x_1"])]
-  elif problem_name == "quadratic":
-    problem = problems.quadratic(batch_size=128, num_dims=10)
-    net_config = {"cw": {
-        "net": "CoordinateWiseDeepLSTM",
-        "net_options": {"layers": (20, 20)},
-        "net_path": path
-    }}
-    net_assignments = None
-  ### our tests
-  elif problem_name == "mnist":
+#   if problem_name == "simple":
+#     problem = problems.simple()
+#     net_config = {"cw": {
+#         "net": "CoordinateWiseDeepLSTM",
+#         "net_options": {"layers": (), "initializer": "zeros"},
+#         "net_path": path
+#     }}
+#     net_assignments = None
+#   elif problem_name == "simple-multi":
+#     problem = problems.simple_multi_optimizer()
+#     net_config = {
+#         "cw": {
+#             "net": "CoordinateWiseDeepLSTM",
+#             "net_options": {"layers": (), "initializer": "zeros"},
+#             "net_path": path
+#         },
+#         "adam": {
+#             "net": "Adam",
+#             "net_options": {"learning_rate": 0.01}
+#         }
+#     }
+#     net_assignments = [("cw", ["x_0"]), ("adam", ["x_1"])]
+#   elif problem_name == "quadratic":
+#     problem = problems.quadratic(batch_size=128, num_dims=10)
+#     net_config = {"cw": {
+#         "net": "CoordinateWiseDeepLSTM",
+#         "net_options": {"layers": (20, 20)},
+#         "net_path": path
+#     }}
+#     net_assignments = None
+#   ### our tests
+#   elif problem_name == "mnist":
+#     if mode is None:
+#         mode = "train" if path is None else "test"
+#     problem = problems.mnist(layers=(20,), activation="sigmoid", mode=mode)
+#     net_config = {"cw": get_default_net_config(path)}
+#     net_assignments = None
+#   elif problem_name == "mnist_relu":
+#     if mode is None:
+#         mode = "train" if path is None else "test"
+#     problem = problems.mnist(layers=(20,), activation="relu", mode=mode)
+#     net_config = {"cw": get_default_net_config(path)}
+#     net_assignments = None
+  if problem_name == "nilm_seq": # ----------------------- RELEVANT -------------------------
     if mode is None:
         mode = "train" if path is None else "test"
-    problem = problems.mnist(layers=(20,), activation="sigmoid", mode=mode)
-    net_config = {"cw": get_default_net_config(path)}
+    problem = problems.nilm_seq(mode=mode)
+    net_config = {"cw": get_default_net_config(path)} #TODO is this the meta net?
     net_assignments = None
-  elif problem_name == "mnist_relu":
-    if mode is None:
-        mode = "train" if path is None else "test"
-    problem = problems.mnist(layers=(20,), activation="relu", mode=mode)
-    net_config = {"cw": get_default_net_config(path)}
-    net_assignments = None
-  elif problem_name == "mnist_deeper":
-    if mode is None:
-        mode = "train" if path is None else "test"
-    num_hidden_layer = 2
-    problem = problems.mnist(layers=(20,) * num_hidden_layer, activation="sigmoid", mode=mode)
-    net_config = {"cw": get_default_net_config(path)}
-    net_assignments = None
-  elif problem_name == "mnist_conv":
-    if mode is None:
-        mode = "train" if path is None else "test"
-    problem = problems.mnist_conv(mode=mode, batch_norm=True)
-    net_config = {"cw": get_default_net_config(path)}
-    net_assignments = None
+#   elif problem_name == "mnist_deeper":
+#     if mode is None:
+#         mode = "train" if path is None else "test"
+#     num_hidden_layer = 2
+#     problem = problems.mnist(layers=(20,) * num_hidden_layer, activation="sigmoid", mode=mode)
+#     net_config = {"cw": get_default_net_config(path)}
+#     net_assignments = None
+#   elif problem_name == "mnist_conv":
+#     if mode is None:
+#         mode = "train" if path is None else "test"
+#     problem = problems.mnist_conv(mode=mode, batch_norm=True)
+#     net_config = {"cw": get_default_net_config(path)}
+#     net_assignments = None
   elif problem_name == "cifar_conv":
     if mode is None:
         mode = "train" if path is None else "test"
@@ -213,38 +231,38 @@ def get_config(problem_name, path=None, mode=None, num_hidden_layer=None, net_na
     fc_vars += ["mlp/linear_{}/b".format(i) for i in xrange(2)]
     fc_vars += ["mlp/batch_norm/beta"]
     net_assignments = [("conv", conv_vars), ("fc", fc_vars)]
-  elif problem_name == "confocal_microscopy_3d":
-    problem = problems.confocal_microscopy_3d(batch_size=32, num_points=5)
-    net_config = {"cw": {
-        "net": "CoordinateWiseDeepLSTM",
-        "net_options": {"layers": (20, 20)},
-        "net_path": path
-    }}
-    net_assignments = None
-  elif problem_name == "square_cos":
-    problem = problems.square_cos(batch_size=128, num_dims=2)
-    net_config = {"cw": {
-        "net": "CoordinateWiseDeepLSTM",
-        "net_options": {"layers": (20, 20)},
-        "net_path": path
-    }}
-    net_assignments = None
-  elif problem_name == "rastrigin":
-    problem = problems.rastrigin(batch_size=128, num_dims=2)
-    net_config = {"cw": {
-        "net": "CoordinateWiseDeepLSTM",
-        "net_options": {"layers": (20, 20)},
-        "net_path": path
-    }}
-    net_assignments = None
-  elif problem_name == "lasso":
-    problem = problems.lasso(batch_size=128, num_dims=2)
-    net_config = {"cw": {
-        "net": "CoordinateWiseDeepLSTM",
-        "net_options": {"layers": (20, 20)},
-        "net_path": path
-    }}
-    net_assignments = None
+#   elif problem_name == "confocal_microscopy_3d":
+#     problem = problems.confocal_microscopy_3d(batch_size=32, num_points=5)
+#     net_config = {"cw": {
+#         "net": "CoordinateWiseDeepLSTM",
+#         "net_options": {"layers": (20, 20)},
+#         "net_path": path
+#     }}
+#     net_assignments = None
+#   elif problem_name == "square_cos":
+#     problem = problems.square_cos(batch_size=128, num_dims=2)
+#     net_config = {"cw": {
+#         "net": "CoordinateWiseDeepLSTM",
+#         "net_options": {"layers": (20, 20)},
+#         "net_path": path
+#     }}
+#     net_assignments = None
+#   elif problem_name == "rastrigin":
+#     problem = problems.rastrigin(batch_size=128, num_dims=2)
+#     net_config = {"cw": {
+#         "net": "CoordinateWiseDeepLSTM",
+#         "net_options": {"layers": (20, 20)},
+#         "net_path": path
+#     }}
+#     net_assignments = None
+#   elif problem_name == "lasso":
+#     problem = problems.lasso(batch_size=128, num_dims=2)
+#     net_config = {"cw": {
+#         "net": "CoordinateWiseDeepLSTM",
+#         "net_options": {"layers": (20, 20)},
+#         "net_path": path
+#     }}
+#     net_assignments = None
   
   else:
     raise ValueError("{} is not a valid problem".format(problem_name))
