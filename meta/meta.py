@@ -290,17 +290,17 @@ class MetaOptimizer(object):
     # loss will never be evaluated.
     # pdb.set_trace()
     
-        # x contains all trainable variables (of optimizee?)
-    x, constants = _get_variables(make_loss)
+        # optimizee_vars contains all trainable variables (of optimizee?)
+    optimizee_vars, constants = _get_variables(make_loss)
 
     print("Optimizee variables")
-    print([op.name for op in x])
+    print([op.name for op in optimizee_vars])
     print("Problem variables")
     print([op.name for op in constants])
 
     # Create the optimizer networks and find the subsets of variables to assign
     # to each optimizer.
-    nets, net_keys, subsets = _make_nets(x, self._config, net_assignments)
+    nets, net_keys, subsets = _make_nets(optimizee_vars, self._config, net_assignments)
     print('nets', nets)
     print('subsets', subsets)
     # Store the networks so we can save them later.
@@ -313,14 +313,15 @@ class MetaOptimizer(object):
         net = nets[key]
         with tf.name_scope("state_{}".format(i)):
           state.append(_nested_variable(
-              [net.initial_state_for_inputs(x[j], dtype=tf.float32)
+              [net.initial_state_for_inputs(optimizee_vars[j], dtype=tf.float32)
                for j in subset],
               name="state", trainable=False))
     print(state)
-    def update(net, fx, x, state):
+    
+    def update(net, fx, optimizee_vars, state):
       """Parameter and RNN state update."""
       with tf.name_scope("gradients"):
-        gradients = tf.gradients(fx, x)
+        gradients = tf.gradients(fx, optimizee_vars)
 
         # Stopping the gradient here corresponds to what was done in the
         # original L2L NIPS submission. However it looks like things like
@@ -337,7 +338,14 @@ class MetaOptimizer(object):
       return deltas, state_next
 
     def time_step(t, fx_array, x, state):
+      with open(filename, './logs/metalog.txt') as f:
+        print('Hello world', file=f)
       """While loop body."""
+        print('T: ', str(t), file=f)
+        print('FX_ARRAY: ', str(fx_array), file=f)
+        print('X: ', str(x), file=f)
+        print('STATE: ', str(state), file=f)
+        print('', file=f)
       x_next = list(x)
       state_next = []
 
@@ -365,7 +373,7 @@ class MetaOptimizer(object):
     _, fx_array, x_final, s_final = tf.while_loop(
         cond=lambda t, *_: t < len_unroll,
         body=time_step,
-        loop_vars=(0, fx_array, x, state),
+        loop_vars=(0, fx_array, optimizee_vars, state),
         parallel_iterations=1,
         swap_memory=True,
         name="unroll")
@@ -379,16 +387,19 @@ class MetaOptimizer(object):
     # Reset the state; should be called at the beginning of an epoch.
     with tf.name_scope("reset"):
       variables = (nest.flatten(state) +
-                   x + constants)
+                   optimizee_vars + constants)
       # Empty array as part of the reset process.
       reset = [tf.variables_initializer(variables), fx_array.close()]
 
     # Operator to update the parameters and the RNN state after our loop, but
     # during an epoch.
     with tf.name_scope("update"):
-      update = (nest.flatten(_nested_assign(x, x_final)) +
+      update = (nest.flatten(_nested_assign(optimizee_vars, x_final)) +
                 nest.flatten(_nested_assign(state, s_final)))
 
+    print('X_FINAL: ',str(type(x_final)) str(x_final))
+    print('FX_FINAL: ',str(type(fx_final)) str(fx_final))
+    
     # Log internal variables.
     for k, net in nets.items():
       print("Optimizer '{}' variables".format(k))

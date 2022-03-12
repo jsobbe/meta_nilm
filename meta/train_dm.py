@@ -29,6 +29,7 @@ import tensorflow as tf
 
 from data_generator import data_loader
 import meta_dm_train as meta
+import numpy as np
 import util
 
 flags = tf.flags
@@ -37,10 +38,10 @@ FLAGS = flags.FLAGS
 flags.DEFINE_string("save_path", None, "Path for saved meta-optimizer.")
 
 flags.DEFINE_integer("num_epochs", 10000, "Number of training epochs.")
-flags.DEFINE_integer("evaluation_period", 100, "Evaluation period.")
+flags.DEFINE_integer("evaluation_period", 100, "Evaluation period.") # evaluate every 100 epochs
 flags.DEFINE_integer("evaluation_epochs", 20, "Number of evaluation epochs.")
 flags.DEFINE_integer("num_steps", 100, "Number of optimization steps per epoch.")
-flags.DEFINE_integer("unroll_length", 5, "Meta-optimizer unroll length.") #Default was 20
+flags.DEFINE_integer("unroll_length", 20, "Meta-optimizer unroll length.") # Default was 20
 flags.DEFINE_float("learning_rate", 0.001, "Learning rate.")
 flags.DEFINE_boolean("second_derivatives", False, "Use second derivatives.")
 
@@ -56,11 +57,14 @@ flags.DEFINE_boolean("if_mt", False, "")
 flags.DEFINE_integer("num_mt", 1, "")
 flags.DEFINE_string("optimizers", "adam", ".")
 flags.DEFINE_float("mt_ratio", 0.3, "")
-flags.DEFINE_string("mt_ratios", "0.0 0.1 0.3 0.3 0.3 0.3 0.3 0.3", "")
+flags.DEFINE_string("mt_ratios", "0.0 0.1 0.3 0.3 0.3 0.3 0.3 0.3", "") # TODO are those the rations per task?
 flags.DEFINE_integer("k", 1, "")
 
 
 def main(_):
+    if FLAGS.unroll_length > FLAGS.num_steps:
+        raise ValueError('Unroll length larger than steps!')
+    
     # Configuration.
     if FLAGS.if_cl:
         num_steps = [100, 200, 500, 1000, 1500, 2000, 2500, 3000]
@@ -87,6 +91,8 @@ def main(_):
             net_assignments=net_assignments,
             second_derivatives=FLAGS.second_derivatives)
     step, update, reset, cost_op, _ = minimize
+    
+    print('VAR_X before:', var_x)
 
     # Data generator for multi-task learning.
     if FLAGS.if_mt:
@@ -105,6 +111,7 @@ def main(_):
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
     with ms.MonitoredSession() as sess:
+        
         def assign_func(val_x):
             sess.run(assign_ops, feed_dict={p: v for p, v in zip(p_val_x, val_x)})
         
@@ -168,7 +175,7 @@ def main(_):
             print('EPOCH: ', e)
             print ("training_loss={}".format(cost))
 
-            # Evaluation.
+            # Evaluation after FLAGS.evaluation_period epochs.
             if (e+1) % FLAGS.evaluation_period == 0:
                 if FLAGS.if_cl:
                     num_unrolls_eval_cur = num_unrolls_eval[curriculum_idx]
@@ -226,7 +233,14 @@ def main(_):
                 elif num_eval >= FLAGS.min_num_eval and not improved:
                     print ("no improve during curriculum {} --> stop".format(curriculum_idx))
                     break
-
+                    
+        print('VAR_X: ', type(var_x))
+        for i in range(len(var_x)):
+            v = sess.run(var_x[i])
+            print('SAVE VAR: ', str(v))
+            np.save('./nilm_models/' + var_x[i].op.name.replace('/', '-'), v)
+#             v.numpy().save('./models/nilm_model_weights.npy')
+#         tf.train.Saver().save(sess, './modesl/nilm_model')
         print ("total time = {}s...".format(timer() - start_time))
 
 

@@ -19,6 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 import os
+import tensorflow as tf
 from timeit import default_timer as timer
 
 import numpy as np
@@ -36,8 +37,9 @@ def run_epoch(sess, cost_op, ops, reset, num_unrolls,
   start = timer()
   sess.run(reset)
   cost = None
+  result = ['', '']
   if task_i == -1:
-      print('num_unrolls: ', num_unrolls)
+#       print('num_unrolls: ', num_unrolls)
       if rd_scale:
         assert scale is not None
         randomized_scale = []
@@ -54,9 +56,9 @@ def run_epoch(sess, cost_op, ops, reset, num_unrolls,
         assign_func(k_value_list)
         # zip() creates tuples from items of both lists
         feed_rs = {p: v for p, v in zip(scale, randomized_scale)}
-        print('Random scale: ', str(scale))
+#         print('Random scale: ', str(scale))
       else:
-        print('No random scale')
+#         print('No random scale')
         feed_rs = {}
       feed_dict = feed_rs
 #       print('PRE-LOOP')
@@ -68,9 +70,8 @@ def run_epoch(sess, cost_op, ops, reset, num_unrolls,
         if step is not None:
             feed_dict[step] = i*unroll_len+1
         result = sess.run([cost_op] + ops, feed_dict=feed_dict)
-#         print('RESULT: ', str(result))
         cost = result[0]
-  else:
+  else: # if multitask learning. But how is task selected?
 #       print('EPOCH')
       assert data is not None
       assert input_pl is not None
@@ -83,8 +84,12 @@ def run_epoch(sess, cost_op, ops, reset, num_unrolls,
               feed_dict[pl] = dat
           if step is not None:
               feed_dict[step] = ri * unroll_len + 1
-          cost = sess.run([cost_op] + ops, feed_dict=feed_dict)[0]
+          result = sess.run([cost_op] + ops, feed_dict=feed_dict)
+          cost = result[0]
 #           print('loss: ', cost)
+#   vars = result[1]
+#   print('RESULT: ', str(type(vars)))
+#   print('RESULT: ', str(vars))
   return timer() - start, cost
 
 
@@ -97,7 +102,8 @@ def run_eval_epoch(sess, cost_op, ops, num_unrolls, step=None, unroll_len=None):
   for i in xrange(num_unrolls):
     if step is not None:
         feed_dict[step] = i * unroll_len + 1
-    cost = sess.run([cost_op] + ops, feed_dict=feed_dict)[0]
+    result = sess.run([cost_op] + ops, feed_dict=feed_dict)
+    cost = result[0]
     total_cost.append(cost)
   return timer() - start, total_cost
 

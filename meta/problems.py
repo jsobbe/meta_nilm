@@ -686,7 +686,7 @@ def vgg16_cifar10(path,  # pylint: disable=invalid-name
     
 
 def nilm_seq(activation="sigmoid",  mains_mean=1800, mains_std=600,
-          batch_size=128, n_epochs=2, appliance_params={}, chunk_wise_training=False,
+          batch_size=512, n_epochs=2, appliance_params={}, chunk_wise_training=False,
           mode="train"):
     
     models = OrderedDict()
@@ -695,19 +695,28 @@ def nilm_seq(activation="sigmoid",  mains_mean=1800, mains_std=600,
     datasets = {'redd':{
         'path': './data/redd.h5',
         'buildings': {
-            1: {'start_time': '2011-05-13', 'end_time': '2011-05-14'}
+            1: {'start_time': '2011-05-01', 'end_time': '2011-05-21'}
+        }}}
+    datasets_eval = {'redd':{
+        'path': './data/redd.h5',
+        'buildings': {
+            1: {'start_time': '2011-05-22', 'end_time': '2011-05-28'}
         }}}
     power = {'mains': ['apparent'], 'appliance': ['active']}
     appliances = ['fridge']
     drop_nans = True
     window_size = 599 # According to seq paper
-    sample_period = 1
+    sample_period = 3
     artificial_aggregate = False # TODO Check what it does and what is better?
     batch_norm = False # TODO from meta. Does it make sense on top of normalization done by NILMTK?
 
     
     redd = DataSet('./data/redd.h5')
-    mains, subs = _get_mains_and_subs(datasets, appliances, power, drop_nans, sample_period, artificial_aggregate)
+    if mode == 'train':
+        mains, subs = _get_mains_and_subs(datasets, appliances, power, drop_nans, sample_period, artificial_aggregate)
+    else:
+        mains, subs = _get_mains_and_subs(datasets_eval, appliances, power, drop_nans, sample_period, artificial_aggregate)
+
     mains, appliances = _call_preprocessing(mains, subs, 'train', window_size)
     #TODO use tf.constant to turn mains/subs into tensors?
 
@@ -749,7 +758,7 @@ def nilm_seq(activation="sigmoid",  mains_mean=1800, mains_std=600,
         mains_batch = tf.gather(mains_t, indices_t, axis = 0)
         appl_batch = tf.gather(appl_t, indices_t, axis = 0)
         
-        output = tf.squeeze(network_seq(mains_batch)) # TODO not the whole list?
+        output = tf.squeeze(network_seq(mains_batch, load=True)) # TODO not the whole list?
         
 #         print('OUTPUT___________________________')
 #         with tf.Session() as sess:  
@@ -762,26 +771,32 @@ def nilm_seq(activation="sigmoid",  mains_mean=1800, mains_std=600,
             
         return tf.losses.mean_squared_error(labels=appl_batch, predictions=output)
     
-    def _conv_activation(x): # TODO really check whether max_pooling is required?
-          return tf.nn.max_pool(tf.nn.relu(x),
-                                ksize=[1, 2, 2, 1],
-                                strides=[1, 2, 2, 1],
-                                padding="VALID")
               
-    def conv_layer(inputs, strides, filter_size, output_channels, padding, name, training):
+    def conv_layer(inputs, strides, filter_size, output_channels, padding, name, training, load=False):
         # get size of last layer
         n_channels = int(inputs.get_shape()[-1])
         with tf.variable_scope(name, reuse=tf.AUTO_REUSE) as scope:
-            # init random weights
-            kernel1 = tf.get_variable('weights',
-                                      shape=[filter_size, n_channels, output_channels],
-                                      dtype=tf.float32,
-                                      initializer=tf.random_normal_initializer(stddev=0.01)
-                                      )
+            if load:
+                # init random weights
+                kernel1 = tf.get_variable('weights',
+                                          dtype=tf.float32,
+                                          initializer=tf.constant(np.load('./nilm_models/' + name + '-weights.npy'))
+                                          )
 
-            # init bias
-            biases1 = tf.get_variable('biases', [output_channels], 
-                                      initializer=tf.constant_initializer(0.0))
+                # init bias
+                biases1 = tf.get_variable('biases', 
+                                          initializer=tf.constant(np.load('./nilm_models/' + name + '-biases.npy')))
+            else:
+                # init random weights
+                kernel1 = tf.get_variable('weights',
+                                          shape=[filter_size, n_channels, output_channels],
+                                          dtype=tf.float32,
+                                          initializer=tf.random_normal_initializer(stddev=0.01)
+                                          )
+
+                # init bias
+                biases1 = tf.get_variable('biases', [output_channels], 
+                                          initializer=tf.constant_initializer(0.0))
         inputs = tf.squeeze(tf.nn.conv1d(tf.expand_dims(inputs, axis=0), kernel1, strides, padding))
         inputs = tf.nn.bias_add(inputs, biases1)
         if batch_norm:
@@ -789,19 +804,29 @@ def nilm_seq(activation="sigmoid",  mains_mean=1800, mains_std=600,
         inputs = tf.nn.relu(inputs)
         return inputs
         
-    def dense_layer(inputs, units, name, relu=True):
+    def dense_layer(inputs, units, name, relu=True, load=False):
         # -1 means autofill
 #         inputs = tf.reshape(inputs, [units, -1])
-#         print('shape: ', int(inputs.shape()[-1]))
         fc_shape2 = int(inputs.get_shape()[-1])
         # Initialize random weights and save in fc_weights
         with tf.variable_scope(name, reuse=tf.AUTO_REUSE) as scope:
-            weights = tf.get_variable("fc_weights",
+            if load:
+                # init random weights
+                weights = tf.get_variable('fc_weights',
+                                          dtype=tf.float32,
+                                          initializer=tf.constant(np.load('./nilm_models/' + name + '-fc_weights.npy'))
+                                          )
+
+                # init bias
+                bias = tf.get_variable('fc_bias', 
+                                          initializer=tf.constant(np.load('./nilm_models/' + name + '-fc_bias.npy')))
+            else:
+                weights = tf.get_variable("fc_weights",
                                       shape=[fc_shape2, units],
                                       dtype=tf.float32,
                                       initializer=tf.random_normal_initializer(stddev=0.01))
-            # Initialize constant biases and save in fc_bias
-            bias = tf.get_variable("fc_bias",
+                # Initialize constant biases and save in fc_bias
+                bias = tf.get_variable("fc_bias",
                                    shape=[units, ],
                                    dtype=tf.float32,
                                    initializer=tf.constant_initializer(0.0))
@@ -809,22 +834,27 @@ def nilm_seq(activation="sigmoid",  mains_mean=1800, mains_std=600,
         return tf.nn.bias_add(tf.matmul(inputs, weights), bias)
         
     # TODO rework based on paper and nilm implementation
-    def network_seq(inputs, training=True):
-        inputs = conv_layer(inputs, strides=1, filter_size=10, output_channels=30, padding="SAME", name='conv_1', training=training)
-        inputs = conv_layer(inputs, strides=1, filter_size=8, output_channels=30, padding="SAME", name='conv_2', training=training)
-        inputs = conv_layer(inputs, strides=1, filter_size=6, output_channels=40, padding="SAME", name='conv_3', training=training)
-        inputs = conv_layer(inputs, strides=1, filter_size=5, output_channels=50, padding="SAME", name='conv_4', training=training)
+    def network_seq(inputs, training=True, load=False):
+        inputs = conv_layer(inputs, strides=1, filter_size=10, output_channels=30, 
+                            padding="SAME", name='conv_1', training=training, load=load)
+        inputs = conv_layer(inputs, strides=1, filter_size=8, output_channels=30, 
+                            padding="SAME", name='conv_2', training=training, load=load)
+        inputs = conv_layer(inputs, strides=1, filter_size=6, output_channels=40, 
+                            padding="SAME", name='conv_3', training=training, load=load)
+        inputs = conv_layer(inputs, strides=1, filter_size=5, output_channels=50, 
+                            padding="SAME", name='conv_4', training=training, load=load)
         inputs = tf.nn.dropout(inputs, rate=0.2)
-        inputs = conv_layer(inputs, strides=1, filter_size=5, output_channels=50, padding="SAME", name='conv_5', training=training)
+        inputs = conv_layer(inputs, strides=1, filter_size=5, output_channels=50, 
+                            padding="SAME", name='conv_5', training=training, load=load)
 #         print(str(inputs.get_shape().as_list()))
         inputs = tf.reshape(inputs, [batch_size, -1])
         inputs = tf.nn.dropout(inputs, rate=0.2)
 #         inputs = tf.layers.Flatten()(inputs)
 #         inputs = tf.layers.dense(inputs=inputs, units=1024, activation=tf.nn.relu)
-        inputs = tf.nn.relu(dense_layer(inputs, 1024, 'dense_1')) #TODO make 1024 work
+        inputs = tf.nn.relu(dense_layer(inputs, 1024, 'dense_1', load=load)) #TODO make 1024 work
         inputs = tf.nn.dropout(inputs, rate=0.2)
 #         inputs = tf.layers.dense(inputs=inputs, units=1)
-        inputs = dense_layer(inputs, 1, 'dense_2') # TODO final layer should be linear? How?
+        inputs = dense_layer(inputs, 1, 'dense_2', load=load) # TODO final layer should be linear? How?
         return inputs
     
     def partial_fit(self, train_main, train_appliances, do_preprocessing=True, current_epoch=0, **load_kwargs):
