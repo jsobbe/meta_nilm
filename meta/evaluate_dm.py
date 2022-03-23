@@ -51,12 +51,12 @@ def main(_):
     if FLAGS.seed:
         tf.set_random_seed(FLAGS.seed)
 
-    # Problem.
+    # Problem, NET_CONFIG = predefined conf for META-net, NET_ASSIGNMENTS = None
     problem, net_config, net_assignments = util.get_config(FLAGS.problem, FLAGS.path)
 
     # Optimizer setup.
     if FLAGS.optimizer == "Adam":
-        cost_op = problem()
+        cost_op, ground_truth, prediction = problem()
         problem_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)
         problem_reset = tf.variables_initializer(problem_vars)
 
@@ -68,7 +68,7 @@ def main(_):
         if FLAGS.path is None:
             logging.warning("Evaluating untrained L2L optimizer")
         optimizer = meta.MetaOptimizer(**net_config)
-        meta_loss = optimizer.meta_loss(problem, 1, net_assignments=net_assignments)
+        meta_loss, fx_array, x_final, s_final = optimizer.meta_loss(problem, 1, net_assignments=net_assignments)
         _, update, reset, cost_op, _ = meta_loss
     else:
         raise ValueError("{} is not a valid optimizer".format(FLAGS.optimizer))
@@ -85,14 +85,55 @@ def main(_):
         loss_record = []
         for e in xrange(FLAGS.num_epochs):
             # Training.
-            time, cost = util.run_eval_epoch(sess, cost_op, [update], num_unrolls)
+            time, cost, result = util.run_eval_epoch(sess, cost_op, [update], num_unrolls)
             total_time += time
             total_cost += sum(cost) / num_unrolls
             loss_record += cost
-
+        
         # Results.
         util.print_stats("Epoch {}".format(FLAGS.num_epochs), total_cost,
                          total_time, FLAGS.num_epochs)
+#         print('s_final:  ___________________________')
+#         print(sess.run(s_final) )
+        print('s_final:  ___________________________')
+#         x = sess.run(x_final)
+        for el in sess.run(s_final)[0]:
+            print('========================================================================== ')
+            print('========================================= Tuple.1: ')
+            print('Length of tuple item :', len(el[0]))
+            print(len(el[0][0]))
+            print(len(el[0][1]))
+#             print(str(el[0][0]))
+#             print('_____________________________________')
+#             print(str(el[0][1]))
+            print('========================================= Tuple.2: ')
+            print('Length of tuple item :', len(el[1]))
+            print(len(el[1][0]))
+            print(len(el[1][1]))
+#             print(str(el[1][0]))
+#             print('_____________________________________')
+#             print(str(el[1][1]))
+#         print(type(sess.run(s_final)[0][1][0]))
+#         print(len(sess.run(s_final)[0][1][0]))
+#         print(str(sess.run(s_final)[0][1][0]))
+        print('fx_array: ___________________________')
+#         print('size: ', str(sess.run(fx_array.size())))
+        
+#         with tf.Graph().as_default():
+#             def loop_body(i, fx_array):
+#                 with tf.control_dependencies([tf.print(fx_array.read(i))]):
+#                     return i + 1, fx_array
+#             i, fx_array = tf.while_loop(
+#                 lambda i, fx_array: i < fx_array.size(),
+#                 loop_body,
+#                 (tf.constant(0, tf.int32), fx_array))
+#     with tf.Session() as sess:
+#         print('size: ', str(sess.run(fx_array.size())))
+#         print('el_0 ', str(fx_array.read(0)))
+#         print('el_1 ', str(fx_array.read(1))) 
+#         print('el_2 ', str(fx_array.read(2)))
+#         print('el_3 ', str(fx_array.read(3))) 
+#         print(str(result)) # TODO check what  fx_array contains)
 
     if FLAGS.output_path is not None:
         if not os.path.exists(FLAGS.output_path):
@@ -101,6 +142,7 @@ def main(_):
     with open(output_file, 'wb') as l_record:
         pickle.dump(loss_record, l_record)
     print("Saving evaluate loss record {}".format(output_file))
+    
 
 
 if __name__ == "__main__":

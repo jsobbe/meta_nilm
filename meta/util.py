@@ -26,6 +26,8 @@ import numpy as np
 from six.moves import xrange
 
 import problems
+import nilm_seq2point
+import nilm_config
 import random
 
 
@@ -103,9 +105,17 @@ def run_eval_epoch(sess, cost_op, ops, num_unrolls, step=None, unroll_len=None):
     if step is not None:
         feed_dict[step] = i * unroll_len + 1
     result = sess.run([cost_op] + ops, feed_dict=feed_dict)
+#     if i == num_unrolls - 1:
+#         print('RESULT IS: ', type(result))
+#         print('RESULT LEN: ', len(result))
+#         print('RESULT VAR LEN: ', len(result[1]))
+#         for ele in result[1]:
+#             print('ELE IS: ', type(ele))
+#             print('ELE LEN: ', len(ele))
+#             print('ELE: ', str(ele[0]))
     cost = result[0]
     total_cost.append(cost)
-  return timer() - start, total_cost
+  return timer() - start, total_cost, result[-1]
 
 
 def print_stats(header, total_error, total_time, n):
@@ -127,71 +137,63 @@ def get_default_net_config(path):
       "net_path": path
   }
 
+def _prepare_nilm_data(mode="train"):
+    if mode is "train":
+        data=nilm_config.DATASETS_TRAIN
+    else:
+        data=nilm_config.DATASETS_EVAL
+    drop_nans = nilm_config.DROP_NANS
+    power = nilm_config.POWER
+    appliances = nilm_config.APPLIANCES
+    window_size = nilm_config.WINDOW_SIZE
+    sample_period = nilm_config.SAMPLE_PERIOD
+    batch_size = nilm_config.BATCH_SIZE
+    artificial_aggregate = nilm_config.ARTIFICIAL_AGGREGATE
+    load = False
+    
+    mains, subs = nilm_seq2point.get_mains_and_subs_train(
+        data, appliances, power, drop_nans, sample_period, artificial_aggregate)
+
+    mains, appliances = nilm_seq2point.call_preprocessing(mains, subs, 'train', window_size)
+    # TODO check method='train'
+    
+    # mains is currently list of df with many windows
+    # Convert list of dataframes to a single tensor
+    main_tensors = []
+    mains_len = 0
+    for main_df in mains:
+        if not main_df.empty:
+            mains_len += len(main_df)
+        main_tensors.append(tf.convert_to_tensor(main_df))
+    if mains_len <= 1:
+        raise ValueError('No mains data found in provided time frame') 
+    print('num of mains:', mains_len)
+
+    mains_t = tf.squeeze(tf.convert_to_tensor(main_tensors))
+
+    appl_tensors = []
+    for appl_df in appliances:
+        appl_tensors.append(tf.convert_to_tensor(appl_df[1][0])) # TODO for more appliances
+    appl_t = tf.squeeze(tf.convert_to_tensor(appl_tensors))
+    return mains_t, appl_t, mains_len
+
 
 def get_config(problem_name, path=None, mode=None, num_hidden_layer=None, net_name=None):
   """Returns problem configuration."""
-#   if problem_name == "simple":
-#     problem = problems.simple()
-#     net_config = {"cw": {
-#         "net": "CoordinateWiseDeepLSTM",
-#         "net_options": {"layers": (), "initializer": "zeros"},
-#         "net_path": path
-#     }}
-#     net_assignments = None
-#   elif problem_name == "simple-multi":
-#     problem = problems.simple_multi_optimizer()
-#     net_config = {
-#         "cw": {
-#             "net": "CoordinateWiseDeepLSTM",
-#             "net_options": {"layers": (), "initializer": "zeros"},
-#             "net_path": path
-#         },
-#         "adam": {
-#             "net": "Adam",
-#             "net_options": {"learning_rate": 0.01}
-#         }
-#     }
-#     net_assignments = [("cw", ["x_0"]), ("adam", ["x_1"])]
-#   elif problem_name == "quadratic":
-#     problem = problems.quadratic(batch_size=128, num_dims=10)
-#     net_config = {"cw": {
-#         "net": "CoordinateWiseDeepLSTM",
-#         "net_options": {"layers": (20, 20)},
-#         "net_path": path
-#     }}
-#     net_assignments = None
-#   ### our tests
-#   elif problem_name == "mnist":
-#     if mode is None:
-#         mode = "train" if path is None else "test"
-#     problem = problems.mnist(layers=(20,), activation="sigmoid", mode=mode)
-#     net_config = {"cw": get_default_net_config(path)}
-#     net_assignments = None
-#   elif problem_name == "mnist_relu":
-#     if mode is None:
-#         mode = "train" if path is None else "test"
-#     problem = problems.mnist(layers=(20,), activation="relu", mode=mode)
-#     net_config = {"cw": get_default_net_config(path)}
-#     net_assignments = None
-  if problem_name == "nilm_seq": # ----------------------- RELEVANT -------------------------
+
+# ----------------------- RELEVANT -------------------------
+  if problem_name == "nilm_seq": 
+    
+    
     if mode is None:
         mode = "train" if path is None else "test"
-    problem = problems.nilm_seq(mode=mode)
-    net_config = {"cw": get_default_net_config(path)} #TODO is this the meta net?
+    mains, appls, mains_len = _prepare_nilm_data(mode)
+    
+    problem = nilm_seq2point.model(mode=mode, mains=mains, appliances=appls, mains_len=mains_len)
+    net_config = {"cw": get_default_net_config(path)} # meta net?!
     net_assignments = None
-#   elif problem_name == "mnist_deeper":
-#     if mode is None:
-#         mode = "train" if path is None else "test"
-#     num_hidden_layer = 2
-#     problem = problems.mnist(layers=(20,) * num_hidden_layer, activation="sigmoid", mode=mode)
-#     net_config = {"cw": get_default_net_config(path)}
-#     net_assignments = None
-#   elif problem_name == "mnist_conv":
-#     if mode is None:
-#         mode = "train" if path is None else "test"
-#     problem = problems.mnist_conv(mode=mode, batch_norm=True)
-#     net_config = {"cw": get_default_net_config(path)}
-#     net_assignments = None
+# ----------------------- RELEVANT -------------------------
+
   elif problem_name == "cifar_conv":
     if mode is None:
         mode = "train" if path is None else "test"

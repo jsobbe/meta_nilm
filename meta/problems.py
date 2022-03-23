@@ -66,7 +66,7 @@ def _maybe_download_cifar10(path):
     tarfile.open(filepath, "r:gz").extractall(path)
     
 #TODO ganze nilm util methoden auslagern
-def _get_mains_and_subs(datasets, appliances, power, drop_nans, sample_period=1, artificial_aggregate=False):
+def _get_mains_and_subs_train(datasets, appliances, power, drop_nans, sample_period=1, artificial_aggregate=False):
 
     # This function has a few issues, which should be addressed soon
     print("............... Loading Data for training ...................")
@@ -713,9 +713,9 @@ def nilm_seq(activation="sigmoid",  mains_mean=1800, mains_std=600,
     
     redd = DataSet('./data/redd.h5')
     if mode == 'train':
-        mains, subs = _get_mains_and_subs(datasets, appliances, power, drop_nans, sample_period, artificial_aggregate)
-    else:
-        mains, subs = _get_mains_and_subs(datasets_eval, appliances, power, drop_nans, sample_period, artificial_aggregate)
+        mains, subs = _get_mains_and_subs_train(datasets, appliances, power, drop_nans, sample_period, artificial_aggregate)
+    else: #TODO
+        mains, subs = _get_mains_and_subs_train(datasets_eval, appliances, power, drop_nans, sample_period, artificial_aggregate)
 
     mains, appliances = _call_preprocessing(mains, subs, 'train', window_size)
     #TODO use tf.constant to turn mains/subs into tensors?
@@ -738,7 +738,7 @@ def nilm_seq(activation="sigmoid",  mains_mean=1800, mains_std=600,
             main_tensors.append(tf.convert_to_tensor(main_df))
         if mains_len <= 1:
             raise ValueError('No mains data found in provided time frame') 
-        print(mains_len)
+        print('num of mains:', mains_len)
             
         indices_t = tf.random_uniform([batch_size], 0, mains_len, tf.int64)
         
@@ -758,8 +758,9 @@ def nilm_seq(activation="sigmoid",  mains_mean=1800, mains_std=600,
         mains_batch = tf.gather(mains_t, indices_t, axis = 0)
         appl_batch = tf.gather(appl_t, indices_t, axis = 0)
         
-        output = tf.squeeze(network_seq(mains_batch, load=True)) # TODO not the whole list?
-        
+        output = tf.squeeze(network_seq(mains_batch)) # TODO not the whole list?
+#         output = tf.function(evaluate_and_save_model(appl_batch, output))
+
 #         print('OUTPUT___________________________')
 #         with tf.Session() as sess:  
 #             print(output.eval()) 
@@ -768,8 +769,16 @@ def nilm_seq(activation="sigmoid",  mains_mean=1800, mains_std=600,
 #         with tf.Session() as sess:  
 #             print(appl_batch.eval()) 
 #             print('----:', str(appl_batch.get_shape().as_list()))
-            
-        return tf.losses.mean_squared_error(labels=appl_batch, predictions=output)
+
+            # TODO  Write func to save data and evaluate by hand !!!
+        return tf.losses.mean_squared_error(labels=appl_batch, predictions=output), appl_batch, output
+    
+    def evaluate_and_save_model(appliances, output):
+        to_save = tf.concat([appliances, output], 0)
+#         to_save = tf.strings.as_string(to_save)
+#         tf.io.write_file('./nilm_results/test.txt', to_save)
+        tf.function(to_save.numpy().save('./nilm_results/test'))
+        return output
     
               
     def conv_layer(inputs, strides, filter_size, output_channels, padding, name, training, load=False):

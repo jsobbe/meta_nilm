@@ -1,0 +1,1075 @@
+............... Loading Data for training ...................
+Loading data for  redd  dataset
+Loading building ...  1
+Loading data for meter ElecMeterID(instance=1, building=1, dataset='REDD')     Loading data for meter ElecMeterID(instance=2, building=1, dataset='REDD')     
+Done loading data all meters for this chunk.
+Dropping missing values
+497092
+
+inputs:  <tf.Variable 'conv_1/weights:0' shape=(10, 599, 30) dtype=float32_ref>
+reshaped:  Tensor("states/state_0/Reshape:0", shape=(179700, 1), dtype=float32)
+batch_size:  179700
+
+inputs:  <tf.Variable 'conv_1/biases:0' shape=(30,) dtype=float32_ref>
+reshaped:  Tensor("states/state_0/Reshape_1:0", shape=(30, 1), dtype=float32)
+batch_size:  30
+
+inputs:  <tf.Variable 'conv_2/weights:0' shape=(8, 30, 30) dtype=float32_ref>
+reshaped:  Tensor("states/state_0/Reshape_2:0", shape=(7200, 1), dtype=float32)
+batch_size:  7200
+
+inputs:  <tf.Variable 'conv_2/biases:0' shape=(30,) dtype=float32_ref>
+reshaped:  Tensor("states/state_0/Reshape_3:0", shape=(30, 1), dtype=float32)
+batch_size:  30
+
+inputs:  <tf.Variable 'conv_3/weights:0' shape=(6, 30, 40) dtype=float32_ref>
+reshaped:  Tensor("states/state_0/Reshape_4:0", shape=(7200, 1), dtype=float32)
+batch_size:  7200
+
+inputs:  <tf.Variable 'conv_3/biases:0' shape=(40,) dtype=float32_ref>
+reshaped:  Tensor("states/state_0/Reshape_5:0", shape=(40, 1), dtype=float32)
+batch_size:  40
+
+inputs:  <tf.Variable 'conv_4/weights:0' shape=(5, 40, 50) dtype=float32_ref>
+reshaped:  Tensor("states/state_0/Reshape_6:0", shape=(10000, 1), dtype=float32)
+batch_size:  10000
+
+inputs:  <tf.Variable 'conv_4/biases:0' shape=(50,) dtype=float32_ref>
+reshaped:  Tensor("states/state_0/Reshape_7:0", shape=(50, 1), dtype=float32)
+batch_size:  50
+
+inputs:  <tf.Variable 'conv_5/weights:0' shape=(5, 50, 50) dtype=float32_ref>
+reshaped:  Tensor("states/state_0/Reshape_8:0", shape=(12500, 1), dtype=float32)
+batch_size:  12500
+
+inputs:  <tf.Variable 'conv_5/biases:0' shape=(50,) dtype=float32_ref>
+reshaped:  Tensor("states/state_0/Reshape_9:0", shape=(50, 1), dtype=float32)
+batch_size:  50
+
+inputs:  <tf.Variable 'dense_1/fc_weights:0' shape=(50, 1024) dtype=float32_ref>
+reshaped:  Tensor("states/state_0/Reshape_10:0", shape=(51200, 1), dtype=float32)
+batch_size:  51200
+
+inputs:  <tf.Variable 'dense_1/fc_bias:0' shape=(1024,) dtype=float32_ref>
+reshaped:  Tensor("states/state_0/Reshape_11:0", shape=(1024, 1), dtype=float32)
+batch_size:  1024
+
+inputs:  <tf.Variable 'dense_2/fc_weights:0' shape=(1024, 1) dtype=float32_ref>
+reshaped:  Tensor("states/state_0/Reshape_12:0", shape=(1024, 1), dtype=float32)
+batch_size:  1024
+
+inputs:  <tf.Variable 'dense_2/fc_bias:0' shape=(1,) dtype=float32_ref>
+reshaped:  Tensor("states/state_0/Reshape_13:0", shape=(1, 1), dtype=float32)
+batch_size:  1
+497092
+497092
+number of parameters = 270049
+Optimizer 'cw' variables
+[<tf.Variable 'vars_optimizer/cw_deep_lstm/lstm_1/w_gates:0' shape=(22, 80) dtype=float32_ref>, <tf.Variable 'vars_optimizer/cw_deep_lstm/lstm_1/b_gates:0' shape=(80,) dtype=float32_ref>, <tf.Variable 'vars_optimizer/cw_deep_lstm/lstm_2/w_gates:0' shape=(40, 80) dtype=float32_ref>, <tf.Variable 'vars_optimizer/cw_deep_lstm/lstm_2/b_gates:0' shape=(80,) dtype=float32_ref>, <tf.Variable 'vars_optimizer/cw_deep_lstm/linear/w:0' shape=(20, 1) dtype=float32_ref>, <tf.Variable 'vars_optimizer/cw_deep_lstm/linear/b:0' shape=(1,) dtype=float32_ref>]
+EPOCH:  0
+training_loss=1590682240.0
+EPOCH:  1
+training_loss=57640560.0
+EPOCH:  2
+training_loss=4125542.5
+EPOCH:  3
+training_loss=483331.1875
+EPOCH:  4
+training_loss=79059.140625
+EPOCH:  5
+training_loss=17084.009765625
+EPOCH:  6
+training_loss=3915.947265625
+EPOCH:  7
+training_loss=1175.013916015625
+EPOCH:  8
+training_loss=380.23895263671875
+EPOCH:  9
+training_loss=154.64981079101562
+EPOCH:  10
+training_loss=36.46171951293945
+EPOCH:  11
+training_loss=11.378902435302734
+EPOCH:  12
+training_loss=4.197649002075195
+EPOCH:  13
+training_loss=4.109094142913818
+EPOCH:  14
+training_loss=3.390253782272339
+EPOCH:  15
+training_loss=2.5559635162353516
+EPOCH:  16
+training_loss=11.545167922973633
+EPOCH:  17
+training_loss=14.563774108886719
+EPOCH:  18
+training_loss=14.188111305236816
+EPOCH:  19
+training_loss=17.845947265625
+EPOCH:  20
+training_loss=21.93915367126465
+EPOCH:  21
+training_loss=15.713310241699219
+EPOCH:  22
+training_loss=7.197885990142822
+EPOCH:  23
+training_loss=8.133441925048828
+EPOCH:  24
+training_loss=14.206823348999023
+EPOCH:  25
+training_loss=6.609683513641357
+EPOCH:  26
+training_loss=8.754188537597656
+EPOCH:  27
+training_loss=8.244857788085938
+EPOCH:  28
+training_loss=8.05147933959961
+EPOCH:  29
+training_loss=5.287246227264404
+EPOCH:  30
+training_loss=7.95282506942749
+EPOCH:  31
+training_loss=5.894399166107178
+EPOCH:  32
+training_loss=6.738718032836914
+EPOCH:  33
+training_loss=4.016040802001953
+EPOCH:  34
+training_loss=7.61698055267334
+EPOCH:  35
+training_loss=7.242954730987549
+EPOCH:  36
+training_loss=11.559242248535156
+EPOCH:  37
+training_loss=9.517772674560547
+EPOCH:  38
+training_loss=9.749232292175293
+EPOCH:  39
+training_loss=6.987094879150391
+EPOCH:  40
+training_loss=4.874527454376221
+EPOCH:  41
+training_loss=6.614811897277832
+EPOCH:  42
+training_loss=1.2705154418945312
+EPOCH:  43
+training_loss=2.333479881286621
+EPOCH:  44
+training_loss=1.7731738090515137
+EPOCH:  45
+training_loss=1.299804925918579
+EPOCH:  46
+training_loss=2.028651237487793
+EPOCH:  47
+training_loss=0.8948428630828857
+EPOCH:  48
+training_loss=1.098876953125
+EPOCH:  49
+training_loss=1.0592551231384277
+EPOCH:  50
+training_loss=0.848252534866333
+EPOCH:  51
+training_loss=0.9091169834136963
+EPOCH:  52
+training_loss=0.8801801204681396
+EPOCH:  53
+training_loss=0.9729454517364502
+EPOCH:  54
+training_loss=1.7344179153442383
+EPOCH:  55
+training_loss=1.00881028175354
+EPOCH:  56
+training_loss=0.9427971839904785
+EPOCH:  57
+training_loss=0.8733558654785156
+EPOCH:  58
+training_loss=0.9113204479217529
+EPOCH:  59
+training_loss=0.8294983506202698
+EPOCH:  60
+training_loss=0.9109445810317993
+EPOCH:  61
+training_loss=0.8256876468658447
+EPOCH:  62
+training_loss=0.9111759662628174
+EPOCH:  63
+training_loss=0.9341476559638977
+EPOCH:  64
+training_loss=0.9141274094581604
+EPOCH:  65
+training_loss=1.0045504570007324
+EPOCH:  66
+training_loss=1.0431263446807861
+EPOCH:  67
+training_loss=0.8656377792358398
+EPOCH:  68
+training_loss=0.8446394801139832
+EPOCH:  69
+training_loss=1.131338357925415
+EPOCH:  70
+training_loss=0.9205511808395386
+EPOCH:  71
+training_loss=0.8615916967391968
+EPOCH:  72
+training_loss=0.9274517297744751
+EPOCH:  73
+training_loss=0.9238841533660889
+EPOCH:  74
+training_loss=1.1378233432769775
+EPOCH:  75
+training_loss=1.011725664138794
+EPOCH:  76
+training_loss=1.7205016613006592
+EPOCH:  77
+training_loss=0.948904812335968
+EPOCH:  78
+training_loss=0.9567825794219971
+EPOCH:  79
+training_loss=0.8396087884902954
+EPOCH:  80
+training_loss=0.9402428865432739
+EPOCH:  81
+training_loss=1.0050647258758545
+EPOCH:  82
+training_loss=1.8484734296798706
+EPOCH:  83
+training_loss=0.9581359624862671
+EPOCH:  84
+training_loss=0.9423540234565735
+EPOCH:  85
+training_loss=1.052056074142456
+EPOCH:  86
+training_loss=0.8758460283279419
+EPOCH:  87
+training_loss=0.9811803102493286
+EPOCH:  88
+training_loss=0.8102142214775085
+EPOCH:  89
+training_loss=0.8525879979133606
+EPOCH:  90
+training_loss=1.5343639850616455
+EPOCH:  91
+training_loss=0.9130221009254456
+EPOCH:  92
+training_loss=1.0312998294830322
+EPOCH:  93
+training_loss=0.8866225481033325
+EPOCH:  94
+training_loss=1.1529648303985596
+EPOCH:  95
+training_loss=1.120937705039978
+EPOCH:  96
+training_loss=0.9487770795822144
+EPOCH:  97
+training_loss=1.0467756986618042
+EPOCH:  98
+training_loss=1.0064013004302979
+EPOCH:  99
+training_loss=0.8570464849472046
+epoch=99, num_steps=50, eval_loss=0.9101323395967483
+Saving optimizer of epoch 100...
+EPOCH:  100
+training_loss=0.9648720622062683
+EPOCH:  101
+training_loss=1.0207891464233398
+EPOCH:  102
+training_loss=0.8707191348075867
+EPOCH:  103
+training_loss=0.8810141682624817
+EPOCH:  104
+training_loss=1.4739534854888916
+EPOCH:  105
+training_loss=0.9317157864570618
+EPOCH:  106
+training_loss=1.0681793689727783
+EPOCH:  107
+training_loss=0.8599473237991333
+EPOCH:  108
+training_loss=0.9548987150192261
+EPOCH:  109
+training_loss=0.9321615099906921
+EPOCH:  110
+training_loss=0.9833695888519287
+EPOCH:  111
+training_loss=1.412781834602356
+EPOCH:  112
+training_loss=0.8360950946807861
+EPOCH:  113
+training_loss=0.9066665172576904
+EPOCH:  114
+training_loss=0.8314341902732849
+EPOCH:  115
+training_loss=0.8394145369529724
+EPOCH:  116
+training_loss=1.0409715175628662
+EPOCH:  117
+training_loss=1.0354996919631958
+EPOCH:  118
+training_loss=0.9541146159172058
+EPOCH:  119
+training_loss=1.0284032821655273
+EPOCH:  120
+training_loss=0.9065028429031372
+EPOCH:  121
+training_loss=1.0558693408966064
+EPOCH:  122
+training_loss=0.8581870198249817
+EPOCH:  123
+training_loss=1.133245587348938
+EPOCH:  124
+training_loss=1.065798282623291
+EPOCH:  125
+training_loss=0.9452242851257324
+EPOCH:  126
+training_loss=1.032543420791626
+EPOCH:  127
+training_loss=1.0673434734344482
+EPOCH:  128
+training_loss=0.9734248518943787
+EPOCH:  129
+training_loss=1.0190002918243408
+EPOCH:  130
+training_loss=1.1029410362243652
+EPOCH:  131
+training_loss=1.316117763519287
+EPOCH:  132
+training_loss=1.0706474781036377
+EPOCH:  133
+training_loss=0.9779208898544312
+EPOCH:  134
+training_loss=0.9531545639038086
+EPOCH:  135
+training_loss=0.934808075428009
+EPOCH:  136
+training_loss=0.8698107004165649
+EPOCH:  137
+training_loss=1.0869741439819336
+EPOCH:  138
+training_loss=0.8023794889450073
+EPOCH:  139
+training_loss=0.9184438586235046
+EPOCH:  140
+training_loss=0.9013751745223999
+EPOCH:  141
+training_loss=0.8229552507400513
+EPOCH:  142
+training_loss=0.8784973621368408
+EPOCH:  143
+training_loss=1.6877949237823486
+EPOCH:  144
+training_loss=1.5500906705856323
+EPOCH:  145
+training_loss=0.8021788597106934
+EPOCH:  146
+training_loss=0.9895524382591248
+EPOCH:  147
+training_loss=0.876590371131897
+EPOCH:  148
+training_loss=0.8530418276786804
+EPOCH:  149
+training_loss=0.9151421785354614
+EPOCH:  150
+training_loss=0.8028076887130737
+EPOCH:  151
+training_loss=0.9496550559997559
+EPOCH:  152
+training_loss=0.8848116397857666
+EPOCH:  153
+training_loss=0.8936604857444763
+EPOCH:  154
+training_loss=1.045220971107483
+EPOCH:  155
+training_loss=0.9586514234542847
+EPOCH:  156
+training_loss=0.9732565879821777
+EPOCH:  157
+training_loss=1.0015320777893066
+EPOCH:  158
+training_loss=0.9273114204406738
+EPOCH:  159
+training_loss=0.9694830179214478
+EPOCH:  160
+training_loss=0.8867229223251343
+EPOCH:  161
+training_loss=0.9246490597724915
+EPOCH:  162
+training_loss=0.8569972515106201
+EPOCH:  163
+training_loss=0.9657317996025085
+EPOCH:  164
+training_loss=0.9802709817886353
+EPOCH:  165
+training_loss=0.978309154510498
+EPOCH:  166
+training_loss=0.9850806593894958
+EPOCH:  167
+training_loss=0.781657338142395
+EPOCH:  168
+training_loss=1.011699914932251
+EPOCH:  169
+training_loss=0.88290935754776
+EPOCH:  170
+training_loss=0.9976040124893188
+EPOCH:  171
+training_loss=0.8610142469406128
+EPOCH:  172
+training_loss=0.932823121547699
+EPOCH:  173
+training_loss=1.6910674571990967
+EPOCH:  174
+training_loss=0.9896000623703003
+EPOCH:  175
+training_loss=0.832360565662384
+EPOCH:  176
+training_loss=0.9448693990707397
+EPOCH:  177
+training_loss=0.9225640296936035
+EPOCH:  178
+training_loss=0.799278736114502
+EPOCH:  179
+training_loss=0.9826084971427917
+EPOCH:  180
+training_loss=1.892270803451538
+EPOCH:  181
+training_loss=0.8870657682418823
+EPOCH:  182
+training_loss=1.186729907989502
+EPOCH:  183
+training_loss=0.9784302711486816
+EPOCH:  184
+training_loss=1.0095200538635254
+EPOCH:  185
+training_loss=0.8374974727630615
+EPOCH:  186
+training_loss=1.9422545433044434
+EPOCH:  187
+training_loss=0.827858030796051
+EPOCH:  188
+training_loss=1.0773438215255737
+EPOCH:  189
+training_loss=3.197934627532959
+EPOCH:  190
+training_loss=1.0363072156906128
+EPOCH:  191
+training_loss=1.028692364692688
+EPOCH:  192
+training_loss=0.8508926630020142
+EPOCH:  193
+training_loss=0.8440471887588501
+EPOCH:  194
+training_loss=1.4433770179748535
+EPOCH:  195
+training_loss=0.9339032173156738
+EPOCH:  196
+training_loss=0.9315727949142456
+EPOCH:  197
+training_loss=0.9215476512908936
+EPOCH:  198
+training_loss=0.8916894793510437
+EPOCH:  199
+training_loss=0.8781231045722961
+epoch=199, num_steps=50, eval_loss=1.009454882144928
+EPOCH:  200
+training_loss=0.8487503528594971
+EPOCH:  201
+training_loss=0.8909333944320679
+EPOCH:  202
+training_loss=0.9473705291748047
+EPOCH:  203
+training_loss=0.9641870856285095
+EPOCH:  204
+training_loss=0.9877852201461792
+EPOCH:  205
+training_loss=0.8335373997688293
+EPOCH:  206
+training_loss=0.8656752109527588
+EPOCH:  207
+training_loss=0.9504132270812988
+EPOCH:  208
+training_loss=1.0267796516418457
+EPOCH:  209
+training_loss=0.9386221170425415
+EPOCH:  210
+training_loss=0.9986162781715393
+EPOCH:  211
+training_loss=0.8131526112556458
+EPOCH:  212
+training_loss=1.3788528442382812
+EPOCH:  213
+training_loss=0.9071045517921448
+EPOCH:  214
+training_loss=1.0021713972091675
+EPOCH:  215
+training_loss=0.9184219241142273
+EPOCH:  216
+training_loss=0.8959629535675049
+EPOCH:  217
+training_loss=0.9612635374069214
+EPOCH:  218
+training_loss=0.9187889695167542
+EPOCH:  219
+training_loss=0.9842958450317383
+EPOCH:  220
+training_loss=0.8989859819412231
+EPOCH:  221
+training_loss=0.9063436985015869
+EPOCH:  222
+training_loss=0.837825357913971
+EPOCH:  223
+training_loss=0.8331060409545898
+EPOCH:  224
+training_loss=1.0691297054290771
+EPOCH:  225
+training_loss=1.0004725456237793
+EPOCH:  226
+training_loss=0.8098292350769043
+EPOCH:  227
+training_loss=0.9189027547836304
+EPOCH:  228
+training_loss=0.8525395393371582
+EPOCH:  229
+training_loss=1.009608507156372
+EPOCH:  230
+training_loss=0.8090379238128662
+EPOCH:  231
+training_loss=0.9986164569854736
+EPOCH:  232
+training_loss=0.8719156980514526
+EPOCH:  233
+training_loss=0.8417322039604187
+EPOCH:  234
+training_loss=0.979265570640564
+EPOCH:  235
+training_loss=0.9375296831130981
+EPOCH:  236
+training_loss=0.8667160272598267
+EPOCH:  237
+training_loss=0.9006139636039734
+EPOCH:  238
+training_loss=0.7850478887557983
+EPOCH:  239
+training_loss=1.3630404472351074
+EPOCH:  240
+training_loss=0.8604212403297424
+EPOCH:  241
+training_loss=0.8523713946342468
+EPOCH:  242
+training_loss=0.9395813345909119
+EPOCH:  243
+training_loss=1.8813692331314087
+EPOCH:  244
+training_loss=1.3339426517486572
+EPOCH:  245
+training_loss=0.9604042768478394
+EPOCH:  246
+training_loss=0.9927394390106201
+EPOCH:  247
+training_loss=0.9242767095565796
+EPOCH:  248
+training_loss=1.0044937133789062
+EPOCH:  249
+training_loss=0.9462058544158936
+EPOCH:  250
+training_loss=0.8910213708877563
+EPOCH:  251
+training_loss=0.9434576034545898
+EPOCH:  252
+training_loss=0.8497792482376099
+EPOCH:  253
+training_loss=0.9145222902297974
+EPOCH:  254
+training_loss=1.0149941444396973
+EPOCH:  255
+training_loss=0.8597477674484253
+EPOCH:  256
+training_loss=0.992390513420105
+EPOCH:  257
+training_loss=1.063122034072876
+EPOCH:  258
+training_loss=0.8631340265274048
+EPOCH:  259
+training_loss=0.9246388673782349
+EPOCH:  260
+training_loss=1.402775526046753
+EPOCH:  261
+training_loss=1.0317676067352295
+EPOCH:  262
+training_loss=0.9429191946983337
+EPOCH:  263
+training_loss=1.1485780477523804
+EPOCH:  264
+training_loss=1.0836037397384644
+EPOCH:  265
+training_loss=0.8908578157424927
+EPOCH:  266
+training_loss=0.9365809559822083
+EPOCH:  267
+training_loss=0.9315800070762634
+EPOCH:  268
+training_loss=0.8928518295288086
+EPOCH:  269
+training_loss=1.0218061208724976
+EPOCH:  270
+training_loss=0.8891769051551819
+EPOCH:  271
+training_loss=0.890117883682251
+EPOCH:  272
+training_loss=0.9811193943023682
+EPOCH:  273
+training_loss=0.9041745662689209
+EPOCH:  274
+training_loss=1.0755164623260498
+EPOCH:  275
+training_loss=1.2329816818237305
+EPOCH:  276
+training_loss=0.9945241212844849
+EPOCH:  277
+training_loss=0.8551335334777832
+EPOCH:  278
+training_loss=0.9845398664474487
+EPOCH:  279
+training_loss=0.847791314125061
+EPOCH:  280
+training_loss=0.9948692321777344
+EPOCH:  281
+training_loss=0.8159987330436707
+EPOCH:  282
+training_loss=0.872003972530365
+EPOCH:  283
+training_loss=1.0720127820968628
+EPOCH:  284
+training_loss=0.7249671816825867
+EPOCH:  285
+training_loss=0.8652443885803223
+EPOCH:  286
+training_loss=1.1074451208114624
+EPOCH:  287
+training_loss=1.0279898643493652
+EPOCH:  288
+training_loss=0.8907011151313782
+EPOCH:  289
+training_loss=0.9252326488494873
+EPOCH:  290
+training_loss=0.957919716835022
+EPOCH:  291
+training_loss=0.8544291853904724
+EPOCH:  292
+training_loss=0.9430858492851257
+EPOCH:  293
+training_loss=0.8367471694946289
+EPOCH:  294
+training_loss=1.0413285493850708
+EPOCH:  295
+training_loss=1.0031152963638306
+EPOCH:  296
+training_loss=2.068608045578003
+EPOCH:  297
+training_loss=0.9601878523826599
+EPOCH:  298
+training_loss=0.9276049137115479
+EPOCH:  299
+training_loss=0.9273565411567688
+epoch=299, num_steps=50, eval_loss=1.1134759843349458
+EPOCH:  300
+training_loss=0.8628446459770203
+EPOCH:  301
+training_loss=0.9201027750968933
+EPOCH:  302
+training_loss=0.9700195789337158
+EPOCH:  303
+training_loss=1.04506254196167
+EPOCH:  304
+training_loss=0.8968007564544678
+EPOCH:  305
+training_loss=0.918738603591919
+EPOCH:  306
+training_loss=0.8101860284805298
+EPOCH:  307
+training_loss=0.9799875617027283
+EPOCH:  308
+training_loss=1.006601333618164
+EPOCH:  309
+training_loss=0.8663504719734192
+EPOCH:  310
+training_loss=0.9950799345970154
+EPOCH:  311
+training_loss=0.9629388451576233
+EPOCH:  312
+training_loss=1.0311009883880615
+EPOCH:  313
+training_loss=1.011362075805664
+EPOCH:  314
+training_loss=0.9563645720481873
+EPOCH:  315
+training_loss=0.885980486869812
+EPOCH:  316
+training_loss=0.9548444151878357
+EPOCH:  317
+training_loss=0.9132455587387085
+EPOCH:  318
+training_loss=1.0158129930496216
+EPOCH:  319
+training_loss=0.9215313792228699
+EPOCH:  320
+training_loss=0.9699869155883789
+EPOCH:  321
+training_loss=0.9698642492294312
+EPOCH:  322
+training_loss=0.8846563100814819
+EPOCH:  323
+training_loss=0.9417524933815002
+EPOCH:  324
+training_loss=0.9725178480148315
+EPOCH:  325
+training_loss=0.9457720518112183
+EPOCH:  326
+training_loss=1.4055496454238892
+EPOCH:  327
+training_loss=1.0341615676879883
+EPOCH:  328
+training_loss=0.8916622996330261
+EPOCH:  329
+training_loss=0.8825018405914307
+EPOCH:  330
+training_loss=0.9146946668624878
+EPOCH:  331
+training_loss=1.018559217453003
+EPOCH:  332
+training_loss=0.8819475173950195
+EPOCH:  333
+training_loss=0.7976508736610413
+EPOCH:  334
+training_loss=1.0779235363006592
+EPOCH:  335
+training_loss=0.8931655287742615
+EPOCH:  336
+training_loss=0.9971979856491089
+EPOCH:  337
+training_loss=0.9309127926826477
+EPOCH:  338
+training_loss=1.9200427532196045
+EPOCH:  339
+training_loss=0.9090714454650879
+EPOCH:  340
+training_loss=0.8147439360618591
+EPOCH:  341
+training_loss=0.9224427342414856
+EPOCH:  342
+training_loss=1.3652523756027222
+EPOCH:  343
+training_loss=1.0380855798721313
+EPOCH:  344
+training_loss=0.8309765458106995
+EPOCH:  345
+training_loss=0.9168456196784973
+EPOCH:  346
+training_loss=2.3316426277160645
+EPOCH:  347
+training_loss=0.9582679271697998
+EPOCH:  348
+training_loss=1.1303086280822754
+EPOCH:  349
+training_loss=0.8613628149032593
+EPOCH:  350
+training_loss=1.0582127571105957
+EPOCH:  351
+training_loss=1.0158809423446655
+EPOCH:  352
+training_loss=1.063119888305664
+EPOCH:  353
+training_loss=1.0443196296691895
+EPOCH:  354
+training_loss=0.9829005002975464
+EPOCH:  355
+training_loss=0.9168006181716919
+EPOCH:  356
+training_loss=0.9654682278633118
+EPOCH:  357
+training_loss=0.9232714772224426
+EPOCH:  358
+training_loss=1.826678991317749
+EPOCH:  359
+training_loss=0.9676692485809326
+EPOCH:  360
+training_loss=0.8988025188446045
+EPOCH:  361
+training_loss=1.0978405475616455
+EPOCH:  362
+training_loss=1.0343518257141113
+EPOCH:  363
+training_loss=0.8836072683334351
+EPOCH:  364
+training_loss=1.0341589450836182
+EPOCH:  365
+training_loss=1.56740403175354
+EPOCH:  366
+training_loss=0.8901954889297485
+EPOCH:  367
+training_loss=0.9466379284858704
+EPOCH:  368
+training_loss=0.9412741661071777
+EPOCH:  369
+training_loss=0.8980551958084106
+EPOCH:  370
+training_loss=0.9354972839355469
+EPOCH:  371
+training_loss=1.0860687494277954
+EPOCH:  372
+training_loss=0.8796651363372803
+EPOCH:  373
+training_loss=1.0299122333526611
+EPOCH:  374
+training_loss=0.9664225578308105
+EPOCH:  375
+training_loss=1.4334567785263062
+EPOCH:  376
+training_loss=0.976093053817749
+EPOCH:  377
+training_loss=1.4008642435073853
+EPOCH:  378
+training_loss=0.8680773377418518
+EPOCH:  379
+training_loss=1.0413261651992798
+EPOCH:  380
+training_loss=1.5264830589294434
+EPOCH:  381
+training_loss=0.9407015442848206
+EPOCH:  382
+training_loss=0.929313063621521
+EPOCH:  383
+training_loss=1.1908440589904785
+EPOCH:  384
+training_loss=1.0236629247665405
+EPOCH:  385
+training_loss=0.9268741011619568
+EPOCH:  386
+training_loss=0.9203125238418579
+EPOCH:  387
+training_loss=0.9855819344520569
+EPOCH:  388
+training_loss=0.8086814880371094
+EPOCH:  389
+training_loss=0.99202561378479
+EPOCH:  390
+training_loss=1.3832461833953857
+EPOCH:  391
+training_loss=0.9540043473243713
+EPOCH:  392
+training_loss=0.8702330589294434
+EPOCH:  393
+training_loss=0.9386663436889648
+EPOCH:  394
+training_loss=0.8979765176773071
+EPOCH:  395
+training_loss=0.8449931144714355
+EPOCH:  396
+training_loss=0.8739599585533142
+EPOCH:  397
+training_loss=0.8317055702209473
+EPOCH:  398
+training_loss=0.8256320357322693
+EPOCH:  399
+training_loss=0.9198578000068665
+epoch=399, num_steps=50, eval_loss=1.0505110412836074
+EPOCH:  400
+training_loss=0.8362550735473633
+EPOCH:  401
+training_loss=0.8561602830886841
+EPOCH:  402
+training_loss=0.8838043212890625
+EPOCH:  403
+training_loss=0.9252974390983582
+EPOCH:  404
+training_loss=0.8969994187355042
+EPOCH:  405
+training_loss=0.7962262034416199
+EPOCH:  406
+training_loss=0.998620867729187
+EPOCH:  407
+training_loss=0.8596610426902771
+EPOCH:  408
+training_loss=0.943173885345459
+EPOCH:  409
+training_loss=0.9525218605995178
+EPOCH:  410
+training_loss=0.9212431311607361
+EPOCH:  411
+training_loss=0.9698724746704102
+EPOCH:  412
+training_loss=0.8966281414031982
+EPOCH:  413
+training_loss=0.9383270740509033
+EPOCH:  414
+training_loss=0.9556959867477417
+EPOCH:  415
+training_loss=0.8448449969291687
+EPOCH:  416
+training_loss=0.9337233304977417
+EPOCH:  417
+training_loss=0.7741710543632507
+EPOCH:  418
+training_loss=0.9577130079269409
+EPOCH:  419
+training_loss=1.9145045280456543
+EPOCH:  420
+training_loss=1.4489481449127197
+EPOCH:  421
+training_loss=0.8599910736083984
+EPOCH:  422
+training_loss=0.8876625299453735
+EPOCH:  423
+training_loss=1.0131632089614868
+EPOCH:  424
+training_loss=0.8860815763473511
+EPOCH:  425
+training_loss=2.314366340637207
+EPOCH:  426
+training_loss=0.9755094051361084
+EPOCH:  427
+training_loss=0.9395089149475098
+EPOCH:  428
+training_loss=1.0189552307128906
+EPOCH:  429
+training_loss=1.1518261432647705
+EPOCH:  430
+training_loss=1.0210672616958618
+EPOCH:  431
+training_loss=0.834821879863739
+EPOCH:  432
+training_loss=0.8788268566131592
+EPOCH:  433
+training_loss=0.9660688638687134
+EPOCH:  434
+training_loss=1.0523877143859863
+EPOCH:  435
+training_loss=0.8391469717025757
+EPOCH:  436
+training_loss=0.8976985216140747
+EPOCH:  437
+training_loss=0.9219630360603333
+EPOCH:  438
+training_loss=0.9272814989089966
+EPOCH:  439
+training_loss=0.9581671953201294
+EPOCH:  440
+training_loss=0.8700337409973145
+EPOCH:  441
+training_loss=0.9681403040885925
+EPOCH:  442
+training_loss=0.9557710886001587
+EPOCH:  443
+training_loss=0.911078691482544
+EPOCH:  444
+training_loss=0.9091616868972778
+EPOCH:  445
+training_loss=0.9476233720779419
+EPOCH:  446
+training_loss=0.9180005788803101
+EPOCH:  447
+training_loss=1.078047275543213
+EPOCH:  448
+training_loss=1.5257537364959717
+EPOCH:  449
+training_loss=0.9550608396530151
+EPOCH:  450
+training_loss=0.8954032063484192
+EPOCH:  451
+training_loss=0.8675985336303711
+EPOCH:  452
+training_loss=0.8540291786193848
+EPOCH:  453
+training_loss=0.9812150001525879
+EPOCH:  454
+training_loss=0.998306155204773
+EPOCH:  455
+training_loss=0.8285151720046997
+EPOCH:  456
+training_loss=1.008650541305542
+EPOCH:  457
+training_loss=1.0071094036102295
+EPOCH:  458
+training_loss=0.8928608298301697
+EPOCH:  459
+training_loss=0.9475423097610474
+EPOCH:  460
+training_loss=0.8924944400787354
+EPOCH:  461
+training_loss=0.99458909034729
+EPOCH:  462
+training_loss=0.8981236815452576
+EPOCH:  463
+training_loss=0.9316768646240234
+EPOCH:  464
+training_loss=0.8789697289466858
+EPOCH:  465
+training_loss=0.8531957864761353
+EPOCH:  466
+training_loss=0.7544330358505249
+EPOCH:  467
+training_loss=1.0411360263824463
+EPOCH:  468
+training_loss=0.9303812384605408
+EPOCH:  469
+training_loss=0.9806271195411682
+EPOCH:  470
+training_loss=1.9818482398986816
+EPOCH:  471
+training_loss=0.9633404016494751
+EPOCH:  472
+training_loss=0.7432656288146973
+EPOCH:  473
+training_loss=0.8730452060699463
+EPOCH:  474
+training_loss=1.0508779287338257
+EPOCH:  475
+training_loss=0.8676625490188599
+EPOCH:  476
+training_loss=0.9387986660003662
+EPOCH:  477
+training_loss=0.9646535515785217
+EPOCH:  478
+training_loss=0.862801194190979
+EPOCH:  479
+training_loss=1.0273298025131226
+EPOCH:  480
+training_loss=1.0280442237854004
+EPOCH:  481
+training_loss=0.9246452450752258
+EPOCH:  482
+training_loss=1.0720558166503906
+EPOCH:  483
+training_loss=1.0852388143539429
+EPOCH:  484
+training_loss=0.8494468927383423
+EPOCH:  485
+training_loss=0.8332462310791016
+EPOCH:  486
+training_loss=0.9647364616394043
+EPOCH:  487
+training_loss=1.0305813550949097
+EPOCH:  488
+training_loss=0.975679337978363
+EPOCH:  489
+training_loss=0.9932487607002258
+EPOCH:  490
+training_loss=0.771613597869873
+EPOCH:  491
+training_loss=0.8496081829071045
+EPOCH:  492
+training_loss=0.8496801853179932
+EPOCH:  493
+training_loss=0.8259955644607544
+EPOCH:  494
+training_loss=0.8888310194015503
+EPOCH:  495
+training_loss=0.9270139932632446
+EPOCH:  496
+training_loss=1.500722885131836
+EPOCH:  497
+training_loss=0.856425404548645
+EPOCH:  498
+training_loss=0.9021130204200745
+EPOCH:  499
+training_loss=0.8767348527908325
+epoch=499, num_steps=50, eval_loss=1.0199404627084732
+total time = 8470.569169357419s...

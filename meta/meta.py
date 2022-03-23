@@ -30,6 +30,8 @@ from tensorflow.python.framework import ops
 from tensorflow.python.util import nest
 
 import networks
+import numpy
+import pandas as pd
 
 
 def _nested_assign(ref, value):
@@ -267,7 +269,7 @@ class MetaOptimizer(object):
     return result
 
   def meta_loss(self,
-                make_loss,
+                make_loss, # aka the problem
                 len_unroll,
                 net_assignments=None,
                 second_derivatives=False):
@@ -293,18 +295,18 @@ class MetaOptimizer(object):
         # optimizee_vars contains all trainable variables (of optimizee?)
     optimizee_vars, constants = _get_variables(make_loss)
 
-    print("Optimizee variables")
-    print([op.name for op in optimizee_vars])
-    print("Problem variables")
-    print([op.name for op in constants])
+#     print("Optimizee variables")
+#     print([op.name for op in optimizee_vars])
+#     print("Problem variables")
+#     print([op.name for op in constants])
 
     # Create the optimizer networks and find the subsets of variables to assign
     # to each optimizer.
     nets, net_keys, subsets = _make_nets(optimizee_vars, self._config, net_assignments)
-    print('nets', nets)
-    print('subsets', subsets)
     # Store the networks so we can save them later.
     self._nets = nets
+    self.truth = tf.TensorArray(tf.float32, size=len_unroll)
+    self.prediction = tf.TensorArray(tf.float32, size=len_unroll)
 
     # Create hidden state for each subset of variables.
     state = []
@@ -338,21 +340,14 @@ class MetaOptimizer(object):
       return deltas, state_next
 
     def time_step(t, fx_array, x, state):
-      with open(filename, './logs/metalog.txt') as f:
-        print('Hello world', file=f)
       """While loop body."""
-        print('T: ', str(t), file=f)
-        print('FX_ARRAY: ', str(fx_array), file=f)
-        print('X: ', str(x), file=f)
-        print('STATE: ', str(state), file=f)
-        print('', file=f)
       x_next = list(x)
       state_next = []
 
       with tf.name_scope("fx"):
-        fx = _make_with_custom_variables(make_loss, x)
+        fx, truth, prediction = _make_with_custom_variables(make_loss, x) # TODO use dataframe to save truth/prediction?
         fx_array = fx_array.write(t, fx)
-
+        
       with tf.name_scope("dx"):
         for subset, key, s_i in zip(subsets, net_keys, state):
           x_i = [x[j] for j in subset]
@@ -365,11 +360,14 @@ class MetaOptimizer(object):
       with tf.name_scope("t_next"):
         t_next = t + 1
 
+      self.truth.write(t, truth) 
+      self.prediction.write(t, prediction) 
       return t_next, fx_array, x_next, state_next
 
     # Define the while loop.
     fx_array = tf.TensorArray(tf.float32, size=len_unroll + 1,
                               clear_after_read=False)
+    # x_final is the network (or its variables)
     _, fx_array, x_final, s_final = tf.while_loop(
         cond=lambda t, *_: t < len_unroll,
         body=time_step,
@@ -378,10 +376,19 @@ class MetaOptimizer(object):
         swap_memory=True,
         name="unroll")
 
+    # Are these final results after training network?
     with tf.name_scope("fx"):
-      fx_final = _make_with_custom_variables(make_loss, x_final)
+      fx_final, _, _ = _make_with_custom_variables(make_loss, x_final)
       fx_array = fx_array.write(len_unroll, fx_final)
-
+    
+    with tf.Session() as sess: 
+        truth_array = sess.run(self.truth.stack())
+#         self.truth.mark_used()
+        pred_array = sess.run(self.prediction.stack())
+#         self.prediction.mark_used()
+        df = pd.DataFrame({'truth':[truth_array], 
+                           'prediction':[pred_array]})
+        df.to_csv('./nilm_results/pred.csv')
     loss = tf.reduce_sum(fx_array.stack(), name="loss")
 
     # Reset the state; should be called at the beginning of an epoch.
@@ -397,15 +404,13 @@ class MetaOptimizer(object):
       update = (nest.flatten(_nested_assign(optimizee_vars, x_final)) +
                 nest.flatten(_nested_assign(state, s_final)))
 
-    print('X_FINAL: ',str(type(x_final)) str(x_final))
-    print('FX_FINAL: ',str(type(fx_final)) str(fx_final))
     
     # Log internal variables.
     for k, net in nets.items():
       print("Optimizer '{}' variables".format(k))
       print([op for op in snt.get_variables_in_module(net)])
 
-    return MetaLoss(loss, update, reset, fx_final, x_final)
+    return MetaLoss(loss, update, reset, fx_final, x_final), fx_array, x_final, s_final
 
   def meta_minimize(self, make_loss, len_unroll, learning_rate=0.01, **kwargs):
     """Returns an operator minimizing the meta-loss.
@@ -420,7 +425,7 @@ class MetaOptimizer(object):
     Returns:
       namedtuple containing (step, update, reset, fx, x)
     """
-    info = self.meta_loss(make_loss, len_unroll, **kwargs)
+    info, ground_truth, prediction = self.meta_loss(make_loss, len_unroll, **kwargs)
     optimizer = tf.train.AdamOptimizer(learning_rate)
     step = optimizer.minimize(info.loss)
     # wraps step and meta_loss result in named_tuple
