@@ -50,10 +50,10 @@ flags.DEFINE_string("problem", "mnist", "Type of problem.")
 flags.DEFINE_boolean("if_scale", False, "")
 flags.DEFINE_float("rd_scale_bound", 3.0, "Bound for random scaling on the main optimizee.")
 
-flags.DEFINE_boolean("if_cl", False, "")
+flags.DEFINE_boolean("if_cl", False, "") # enhanced 1: curriculum learning
 flags.DEFINE_integer("min_num_eval", 3, "")
 
-flags.DEFINE_boolean("if_mt", False, "")
+flags.DEFINE_boolean("if_mt", False, "") # enhanced 2: imitation technique
 flags.DEFINE_integer("num_mt", 1, "")
 flags.DEFINE_string("optimizers", "adam", ".")
 flags.DEFINE_float("mt_ratio", 0.3, "")

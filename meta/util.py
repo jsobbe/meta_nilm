@@ -152,9 +152,9 @@ def _prepare_nilm_data(mode="train"):
     load = False
     
     mains, subs = nilm_seq2point.get_mains_and_subs_train(
-        data, appliances, power, drop_nans, sample_period, artificial_aggregate)
+        data, appliances[0], power, drop_nans, sample_period, artificial_aggregate)#TODO
 
-    mains, appliances = nilm_seq2point.call_preprocessing(mains, subs, 'train', window_size)
+    mains, appls = nilm_seq2point.call_preprocessing(mains, subs, 'train', window_size)
     # TODO check method='train'
     
     # mains is currently list of df with many windows
@@ -172,8 +172,8 @@ def _prepare_nilm_data(mode="train"):
     mains_t = tf.squeeze(tf.convert_to_tensor(main_tensors))
 
     appl_tensors = []
-    for appl_df in appliances:
-        appl_tensors.append(tf.convert_to_tensor(appl_df[1][0])) # TODO for more appliances
+    for appl_df in appls:
+        appl_tensors.append(tf.convert_to_tensor(appl_df)) # TODO for more appliances
     appl_t = tf.squeeze(tf.convert_to_tensor(appl_tensors))
     return mains_t, appl_t, mains_len
 
@@ -189,7 +189,7 @@ def get_config(problem_name, path=None, mode=None, num_hidden_layer=None, net_na
         mode = "train" if path is None else "test"
     mains, appls, mains_len = _prepare_nilm_data(mode)
     
-    problem = nilm_seq2point.model(mode=mode, mains=mains, appliances=appls, mains_len=mains_len)
+    problem = nilm_seq2point.model(mode=mode, mains=mains, appliances=appls, mains_len=mains_len, appliance_name='fridge') # TODO get from somewhere else
     net_config = {"cw": get_default_net_config(path)} # meta net?!
     net_assignments = None
 # ----------------------- RELEVANT -------------------------

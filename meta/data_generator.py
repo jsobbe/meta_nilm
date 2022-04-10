@@ -62,9 +62,12 @@ class data_loader():
 
     def flatten_and_concat(self, var_list):
         var_flat = []
-        for var in var_list:
-            var = tf.squeeze(tf.reshape(var, shape=(-1, 1)))
+        for idx, var in enumerate(var_list):
+            print('before: ', var.get_shape())
+            if idx < len(var_list) - 1:
+                var = tf.squeeze(tf.reshape(var, shape=(-1, 1)))
             var_flat.append(var)
+            print('after: ', var.get_shape())
         var_cat = tf.concat(var_flat, axis=0)
         return var_cat
 
