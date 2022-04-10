@@ -425,7 +425,7 @@ class MetaOptimizer(object):
     Returns:
       namedtuple containing (step, update, reset, fx, x)
     """
-    info, ground_truth, prediction = self.meta_loss(make_loss, len_unroll, **kwargs)
+    info, _, _, _ = self.meta_loss(make_loss, len_unroll, **kwargs)
     optimizer = tf.train.AdamOptimizer(learning_rate)
     step = optimizer.minimize(info.loss)
     # wraps step and meta_loss result in named_tuple

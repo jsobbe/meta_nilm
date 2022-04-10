@@ -14,6 +14,8 @@ from collections import OrderedDict
 BASE_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(BASE_PATH)
 
+from nilmtk import *
+
 from six.moves import urllib
 from six.moves import xrange  # pylint: disable=redefined-builtin
 import sonnet as snt
@@ -22,7 +24,6 @@ import pdb
 from vgg16 import VGG16
 import tensorflow_probability as tfp
 
-from nilmtk import *
 import nilm_config
 
 tfd = tfp.distributions
@@ -33,13 +34,13 @@ _nn_initializers = {
 }
 
 
-def get_mains_and_subs_train(datasets, appliances, power, drop_nans, sample_period=1, artificial_aggregate=False):
+def get_mains_and_subs_train(datasets, appliance_name, power, drop_nans, sample_period=1, artificial_aggregate=False):
 
     # This function has a few issues, which should be addressed soon
     print("............... Loading Data for training ...................")
     # store the train_main readings for all buildings
     train_mains = []
-    train_submeters = [[] for i in range(len(appliances))]
+    train_submeters = []
     for dataset in datasets:
         print("Loading data for ",dataset, " dataset")
         train=DataSet(datasets[dataset]['path'])
@@ -56,35 +57,25 @@ def get_mains_and_subs_train(datasets, appliances, power, drop_nans, sample_peri
             # TODO does meta expect a different format here with indeces?
 
             # get and append all single appliance dfs
-            for appliance_name in appliances:
-                appliance_df = next(train.buildings[building].elec[appliance_name].load(
-                    physical_quantity='power', ac_type=power['appliance'], sample_period=sample_period))
-                appliance_df = appliance_df[[list(appliance_df.columns)[0]]]
-                appliance_readings.append(appliance_df)
+            appliance_df = next(train.buildings[building].elec[appliance_name].load(
+                physical_quantity='power', ac_type=power['appliance'], sample_period=sample_period))
+            appliance_df = appliance_df[[list(appliance_df.columns)[0]]] # TODO support for multiple appliances?
 
             if drop_nans:
-                train_df, appliance_readings = _dropna(train_df, appliance_readings)
+                train_df, appliance_df = _dropna(train_df, appliance_df)
 
-            if artificial_aggregate:
+            if artificial_aggregate: # TODO does this make sense for only one appliance?
                 print ("Creating an Artificial Aggregate")
-                train_df = pd.DataFrame(np.zeros(appliance_readings[0].shape),index =
-                                        appliance_readings[0].index,columns=appliance_readings[0].columns)
-                for app_reading in appliance_readings:
-                    train_df+=app_reading
+                train_df = pd.DataFrame(np.zeros(appliance_df.shape),index =
+                                        appliance_df.index,columns=appliance_df.columns)
+                train_df+=app_reading
 
             train_mains.append(train_df)
-            for i,appliance_name in enumerate(appliances):
-                train_submeters[i].append(appliance_readings[i])
-
-    appliance_readings = []
-    for i,appliance_name in enumerate(appliances):
-        appliance_readings.append((appliance_name, train_submeters[i]))
-
-    train_submeters = appliance_readings   
+            train_submeters.append(appliance_df)
 
     return train_mains,train_submeters
 
-def _dropna(mains_df, appliance_dfs=[]):
+def _dropna(mains_df, appliance_df):
         """
         Drops the missing values in the Mains reading and appliance readings and returns consistent data by copmuting the intersection
         """
@@ -94,22 +85,17 @@ def _dropna(mains_df, appliance_dfs=[]):
         mains_df = mains_df.dropna()
         ix = mains_df.index
         mains_df = mains_df.loc[ix]
-        for i in range(len(appliance_dfs)):
-            appliance_dfs[i] = appliance_dfs[i].dropna()
+        appliance_df = appliance_df.dropna()
     
-        for  app_df in appliance_dfs:
-            ix = ix.intersection(app_df.index)
+        ix = ix.intersection(appliance_df.index)
         mains_df = mains_df.loc[ix]
-        new_appliances_list = []
-        for app_df in appliance_dfs:
-            new_appliances_list.append(app_df.loc[ix])
-        return mains_df,new_appliances_list
+        new_appliances_df = appliance_df.loc[ix]
+        return mains_df, new_appliances_df
 
 def call_preprocessing(mains_lst, submeters_lst, method, window_size):
-    mains_mean = 1800 #TODO check
-    mains_std = 600
+    mains_mean, mains_std = _get_mean_and_std(mains_lst)
     
-    if method == 'train':
+    if method == 'train' or method == 'eval':
         mains_df_list = []
         for mains in mains_lst:
             new_mains = mains.values.flatten()
@@ -121,27 +107,16 @@ def call_preprocessing(mains_lst, submeters_lst, method, window_size):
             mains_df_list.append(pd.DataFrame(new_mains))
 
         appliance_list = []
-        for app_index, (app_name, app_df_list) in enumerate(submeters_lst):
-            appliance_params = _get_appliance_params(submeters_lst)
-            if app_name in appliance_params:
-                app_mean = appliance_params[app_name]['mean']
-                app_std = appliance_params[app_name]['std']
-            else:
-                print("Parameters for ", app_name, " were not found!")
-                raise ApplianceNotFoundError()
-
-            processed_appliance_dfs = []
-
-            for app_df in app_df_list:
-                new_app_readings = app_df.values.reshape((-1, 1))
-                # This is for choosing windows
-                new_app_readings = (new_app_readings - app_mean) / app_std
-                # Return as a list of dataframe
-                processed_appliance_dfs.append(pd.DataFrame(new_app_readings))
-            appliance_list.append((app_name, processed_appliance_dfs))
+        app_mean, app_std = _get_mean_and_std(submeters_lst)
+        for app_df in submeters_lst:
+            new_app_readings = app_df.values.reshape((-1, 1))
+            # This is for choosing windows
+            new_app_readings = (new_app_readings - app_mean) / app_std
+            # Return as a list of dataframe
+            appliance_list.append(pd.DataFrame(new_app_readings))
         return mains_df_list, appliance_list
 
-    else:
+    elif method == 'nilm_test':
         mains_df_list = []
 
         for mains in mains_lst:
@@ -154,29 +129,22 @@ def call_preprocessing(mains_lst, submeters_lst, method, window_size):
             mains_df_list.append(pd.DataFrame(new_mains))
         return mains_df_list
     
-#TODO could be optimized if it wouldnt need to be set every time
-def _get_appliance_params(train_appliances):
-    appliance_params = {}
-    # Find the parameters using the first
-    for (app_name,df_list) in train_appliances:
-        l = np.array(pd.concat(df_list,axis=0))
-        app_mean = np.mean(l)
-        app_std = np.std(l)
-        if app_std<1:
-            app_std = 100
-        appliance_params.update({app_name:{'mean':app_mean,'std':app_std}})
-    return appliance_params
+def _get_mean_and_std(mains):
+    l = np.array(pd.concat(mains,axis=0))
+    mean = np.mean(l)
+    std = np.std(l)
+    if std<1:
+        std = 100
+    return mean, std
 
 
-def model(mains=None, appliances=None, mains_len=0, activation="sigmoid", 
-          mains_mean=1800, mains_std=600, mode="train", load=False):
+def model(mains=None, appliances=None, appliance_name='default', mains_len=0, activation="sigmoid", mode="train", load=False):
     
 #     models = OrderedDict()
     file_prefix = "{}-temp-weights".format("nilm-seq")
     window_size = nilm_config.WINDOW_SIZE
     batch_size = nilm_config.BATCH_SIZE
     batch_norm = nilm_config.BATCH_NORM
-    
 
     """
     Build the whole tf pipeline.
@@ -186,14 +154,19 @@ def model(mains=None, appliances=None, mains_len=0, activation="sigmoid",
             print("Sequence length should be odd!")
             raise SequenceLengthError
         
-        indices_t = tf.random_uniform([batch_size], 0, mains_len, tf.int64)
-        mains_batch = tf.gather(mains, indices_t, axis = 0)
-        appl_batch = tf.gather(appliances, indices_t, axis = 0)
+        indices_t = tf.random_uniform([batch_size], 0, mains_len, tf.int64) #TODO return indices too?
         
-        output = tf.squeeze(network_seq(mains_batch, load))
+        # If no appliances are provided, model is presumably used for prediction, so only return output
+        if appliances is not None:
+            mains_batch = tf.gather(mains, indices_t, axis = 0)
+            output = tf.squeeze(network_seq(mains_batch, mode == 'train', load))
+            appl_batch = tf.gather(appliances, indices_t, axis = 0)
+            return tf.reduce_mean(tf.abs(appl_batch - output)), appl_batch, output # custom mean absolute error
+        else:
+            mains_batch = tf.convert_to_tensor(mains)
+            output = tf.squeeze(network_seq(mains_batch, mode == 'train', load))
+            return output
         
-        return tf.losses.mean_squared_error(labels=appl_batch, predictions=output), appl_batch, output
-              
     def conv_layer(inputs, strides, filter_size, output_channels, padding, name, training, load=False):
         # get size of last layer
         n_channels = int(inputs.get_shape()[-1])
@@ -202,12 +175,14 @@ def model(mains=None, appliances=None, mains_len=0, activation="sigmoid",
                 # init random weights
                 kernel1 = tf.get_variable('weights',
                                           dtype=tf.float32,
-                                          initializer=tf.constant(np.load('./nilm_models/' + name + '-weights.npy'))
+                                          initializer=tf.constant(np.load('./nilm_models/'
+                                                                          + name + '-weights.npy'))
                                           )
 
                 # init bias
                 biases1 = tf.get_variable('biases', 
-                                          initializer=tf.constant(np.load('./nilm_models/' + name + '-biases.npy')))
+                                          initializer=tf.constant(np.load('./nilm_models/'
+                                                                          + name + '-biases.npy')))
             else:
                 # init random weights
                 kernel1 = tf.get_variable('weights',
@@ -226,7 +201,7 @@ def model(mains=None, appliances=None, mains_len=0, activation="sigmoid",
         inputs = tf.nn.relu(inputs)
         return inputs
         
-    def dense_layer(inputs, units, name, relu=True, load=False):
+    def dense_layer(inputs, units, name, relu=False, load=False):
         # -1 means autofill
 #         inputs = tf.reshape(inputs, [units, -1])
         fc_shape2 = int(inputs.get_shape()[-1])
@@ -236,12 +211,14 @@ def model(mains=None, appliances=None, mains_len=0, activation="sigmoid",
                 # init random weights
                 weights = tf.get_variable('fc_weights',
                                           dtype=tf.float32,
-                                          initializer=tf.constant(np.load('./nilm_models/' + name + '-fc_weights.npy'))
+                                          initializer=tf.constant(np.load('./nilm_models/'
+                                                                          + name + '-fc_weights.npy'))
                                           )
 
                 # init bias
                 bias = tf.get_variable('fc_bias', 
-                                          initializer=tf.constant(np.load('./nilm_models/' + name + '-fc_bias.npy')))
+                                          initializer=tf.constant(np.load('./nilm_models/'
+                                                                          + name + '-fc_bias.npy')))
             else:
                 weights = tf.get_variable("fc_weights",
                                       shape=[fc_shape2, units],
@@ -253,30 +230,42 @@ def model(mains=None, appliances=None, mains_len=0, activation="sigmoid",
                                    dtype=tf.float32,
                                    initializer=tf.constant_initializer(0.0))
         # add dense layer with weights, biases and the relu activation function
-        return tf.nn.bias_add(tf.matmul(inputs, weights), bias)
+        if relu:
+            inputs = tf.nn.relu(tf.nn.bias_add(tf.matmul(inputs, weights), bias))
+        else:
+            inputs = tf.nn.bias_add(tf.matmul(inputs, weights), bias)
+        return inputs
         
     # TODO rework based on paper and nilm implementation
     def network_seq(inputs, training=True, load=False):
+        print('Shape: ', inputs.get_shape())
         inputs = conv_layer(inputs, strides=1, filter_size=10, output_channels=30, 
                             padding="SAME", name='conv_1', training=training, load=load)
+        print('Shape: ', inputs.get_shape())
         inputs = conv_layer(inputs, strides=1, filter_size=8, output_channels=30, 
                             padding="SAME", name='conv_2', training=training, load=load)
+        print('Shape: ', inputs.get_shape())
         inputs = conv_layer(inputs, strides=1, filter_size=6, output_channels=40, 
                             padding="SAME", name='conv_3', training=training, load=load)
+        print('Shape: ', inputs.get_shape())
         inputs = conv_layer(inputs, strides=1, filter_size=5, output_channels=50, 
                             padding="SAME", name='conv_4', training=training, load=load)
+        print('Shape: ', inputs.get_shape())
         inputs = tf.nn.dropout(inputs, rate=0.2)
         inputs = conv_layer(inputs, strides=1, filter_size=5, output_channels=50, 
                             padding="SAME", name='conv_5', training=training, load=load)
+        print('Shape post conv: ', inputs.get_shape())
 #         print(str(inputs.get_shape().as_list()))
         inputs = tf.reshape(inputs, [batch_size, -1])
         inputs = tf.nn.dropout(inputs, rate=0.2)
 #         inputs = tf.layers.Flatten()(inputs)
 #         inputs = tf.layers.dense(inputs=inputs, units=1024, activation=tf.nn.relu)
-        inputs = tf.nn.relu(dense_layer(inputs, 1024, 'dense_1', load=load)) #TODO make 1024 work
+        inputs = dense_layer(inputs, 1024, 'dense_1', relu=True, load=load) #TODO make 1024 work
+        print('Shape: ', inputs.get_shape())
         inputs = tf.nn.dropout(inputs, rate=0.2)
 #         inputs = tf.layers.dense(inputs=inputs, units=1)
         inputs = dense_layer(inputs, 1, 'dense_2', load=load) # TODO final layer should be linear? How?
+        print('Shape post dense: ', inputs.get_shape())
         return inputs
 
 

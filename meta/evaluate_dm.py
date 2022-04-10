@@ -90,51 +90,38 @@ def main(_):
             total_cost += sum(cost) / num_unrolls
             loss_record += cost
         
+        
+        print('avg_cost:', total_cost)
+        print('loss_record:', loss_record)
+        print('final_loss:', cost[-1])
+        print('cost:', cost)
         # Results.
         util.print_stats("Epoch {}".format(FLAGS.num_epochs), total_cost,
                          total_time, FLAGS.num_epochs)
 #         print('s_final:  ___________________________')
 #         print(sess.run(s_final) )
-        print('s_final:  ___________________________')
-#         x = sess.run(x_final)
-        for el in sess.run(s_final)[0]:
-            print('========================================================================== ')
-            print('========================================= Tuple.1: ')
-            print('Length of tuple item :', len(el[0]))
-            print(len(el[0][0]))
-            print(len(el[0][1]))
-#             print(str(el[0][0]))
-#             print('_____________________________________')
-#             print(str(el[0][1]))
-            print('========================================= Tuple.2: ')
-            print('Length of tuple item :', len(el[1]))
-            print(len(el[1][0]))
-            print(len(el[1][1]))
-#             print(str(el[1][0]))
-#             print('_____________________________________')
-#             print(str(el[1][1]))
-#         print(type(sess.run(s_final)[0][1][0]))
-#         print(len(sess.run(s_final)[0][1][0]))
-#         print(str(sess.run(s_final)[0][1][0]))
-        print('fx_array: ___________________________')
-#         print('size: ', str(sess.run(fx_array.size())))
-        
-#         with tf.Graph().as_default():
-#             def loop_body(i, fx_array):
-#                 with tf.control_dependencies([tf.print(fx_array.read(i))]):
-#                     return i + 1, fx_array
-#             i, fx_array = tf.while_loop(
-#                 lambda i, fx_array: i < fx_array.size(),
-#                 loop_body,
-#                 (tf.constant(0, tf.int32), fx_array))
-#     with tf.Session() as sess:
-#         print('size: ', str(sess.run(fx_array.size())))
-#         print('el_0 ', str(fx_array.read(0)))
-#         print('el_1 ', str(fx_array.read(1))) 
-#         print('el_2 ', str(fx_array.read(2)))
-#         print('el_3 ', str(fx_array.read(3))) 
-#         print(str(result)) # TODO check what  fx_array contains)
+#         if FLAGS.optimizer == "L2L":
+#             print('s_final:  ___________________________')
+#     #         x = sess.run(x_final)
+#             for el in sess.run(s_final)[0]:
+#                 print('========================================================================== ')
+#                 print('========================================= Tuple.1: ')
+#                 print('Length of tuple item :', len(el[0]))
+#                 print(len(el[0][0]))
+#                 print(len(el[0][1]))
+#                 print('========================================= Tuple.2: ')
+#                 print('Length of tuple item :', len(el[1]))
+#                 print(len(el[1][0]))
+#                 print(len(el[1][1]))
+#             print('fx_array: ___________________________')
 
+        
+#         print('VAR_X: ', type(var_x))
+#         for i in range(len(var_x)):
+#             v = sess.run(var_x[i])
+#             print('SAVE VAR: ', str(v))
+#             np.save('./nilm_models/' + var_x[i].op.name.replace('/', '-'), v)
+        
     if FLAGS.output_path is not None:
         if not os.path.exists(FLAGS.output_path):
             os.mkdir(FLAGS.output_path)

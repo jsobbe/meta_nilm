@@ -386,7 +386,7 @@ class MetaOptimizer(object):
 
       with tf.name_scope("fx"):
         scaled_x = [x[k] * scale[k] for k in range(len(scale))]
-        fx = _make_with_custom_variables(make_loss, scaled_x)
+        fx, _, _ = _make_with_custom_variables(make_loss, scaled_x)
         fx_array = fx_array.write(t, fx)
 
       with tf.name_scope("dx"):
@@ -417,7 +417,7 @@ class MetaOptimizer(object):
 
     with tf.name_scope("fx"):
       scaled_x_final = [x_final[k] * scale[k] for k in range(len(scale))]
-      fx_final = _make_with_custom_variables(make_loss, scaled_x_final)
+      fx_final, _, _ = _make_with_custom_variables(make_loss, scaled_x_final)
       fx_array = fx_array.write(len_unroll, fx_final)
 
     loss = tf.reduce_sum(fx_array.stack(), name="loss")
