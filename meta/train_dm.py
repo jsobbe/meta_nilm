@@ -46,6 +46,7 @@ flags.DEFINE_float("learning_rate", 0.001, "Learning rate.")
 flags.DEFINE_boolean("second_derivatives", False, "Use second derivatives.")
 
 flags.DEFINE_string("problem", "mnist", "Type of problem.")
+flags.DEFINE_boolean("save", True, "Whether to save the resulting nilm-model.")
 
 flags.DEFINE_boolean("if_scale", False, "")
 flags.DEFINE_float("rd_scale_bound", 3.0, "Bound for random scaling on the main optimizee.")
@@ -233,12 +234,13 @@ def main(_):
                 elif num_eval >= FLAGS.min_num_eval and not improved:
                     print ("no improve during curriculum {} --> stop".format(curriculum_idx))
                     break
-                    
-        print('VAR_X: ', type(var_x))
-        for i in range(len(var_x)):
-            v = sess.run(var_x[i])
-            print('SAVE VAR: ', str(v))
-            np.save('./nilm_models/' + var_x[i].op.name.replace('/', '-'), v)
+                  
+        if FLAGS.save:
+            print('VAR_X: ', type(var_x))
+            for i in range(len(var_x)):
+                v = sess.run(var_x[i])
+                print('SAVE VAR: ', str(v))
+                np.save('./nilm_models/' + var_x[i].op.name.replace('/', '-'), v)
 #             v.numpy().save('./models/nilm_model_weights.npy')
 #         tf.train.Saver().save(sess, './modesl/nilm_model')
         print ("total time = {}s...".format(timer() - start_time))

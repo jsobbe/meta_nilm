@@ -29,6 +29,9 @@ import tensorflow as tf
 
 import meta
 import util
+import numpy as np
+
+from eval_nilm import nilm_eval
 
 flags = tf.flags
 FLAGS = flags.FLAGS
@@ -38,11 +41,29 @@ flags.DEFINE_string("problem", "simple", "Type of problem.")
 
 flags.DEFINE_string("path", None, "Path to saved meta-optimizer network.")
 flags.DEFINE_string("output_path", None, "Path to output results.")
+flags.DEFINE_boolean("save", True, "Whether to save the resulting nilm-model.")
 
 flags.DEFINE_integer("num_epochs", 1, "Number of evaluation epochs.")
 flags.DEFINE_integer("num_steps", 10000, "Number of optimization steps per epoch.")
 flags.DEFINE_float("learning_rate", 0.001, "Learning rate.")
 flags.DEFINE_integer("seed", None, "Seed for TensorFlow's RNG.")
+
+variable_names = {
+    0: 'conv_1-weights',
+    1: 'conv_1-biases',
+    2: 'conv_2-weights',
+    3: 'conv_2-biases',
+    4: 'conv_3-weights',
+    5: 'conv_3-biases',
+    6: 'conv_4-weights',
+    7: 'conv_4-biases',
+    8: 'conv_5-weights',
+    9: 'conv_5-biases',
+    10: 'dense_1-weights',
+    11: 'dense_1-biases',
+    12: 'dense_2-weights',
+    13: 'dense_2-biases'
+}
 
 
 def main(_):
@@ -68,7 +89,7 @@ def main(_):
         if FLAGS.path is None:
             logging.warning("Evaluating untrained L2L optimizer")
         optimizer = meta.MetaOptimizer(**net_config)
-        meta_loss, fx_array, x_final, s_final = optimizer.meta_loss(problem, 1, net_assignments=net_assignments)
+        meta_loss, fx_array, problem_vars, s_final = optimizer.meta_loss(problem, 1, net_assignments=net_assignments)
         _, update, reset, cost_op, _ = meta_loss
     else:
         raise ValueError("{} is not a valid optimizer".format(FLAGS.optimizer))
@@ -94,41 +115,23 @@ def main(_):
         print('avg_cost:', total_cost)
         print('loss_record:', loss_record)
         print('final_loss:', cost[-1])
-        print('cost:', cost)
         # Results.
         util.print_stats("Epoch {}".format(FLAGS.num_epochs), total_cost,
                          total_time, FLAGS.num_epochs)
-#         print('s_final:  ___________________________')
-#         print(sess.run(s_final) )
-#         if FLAGS.optimizer == "L2L":
-#             print('s_final:  ___________________________')
-#     #         x = sess.run(x_final)
-#             for el in sess.run(s_final)[0]:
-#                 print('========================================================================== ')
-#                 print('========================================= Tuple.1: ')
-#                 print('Length of tuple item :', len(el[0]))
-#                 print(len(el[0][0]))
-#                 print(len(el[0][1]))
-#                 print('========================================= Tuple.2: ')
-#                 print('Length of tuple item :', len(el[1]))
-#                 print(len(el[1][0]))
-#                 print(len(el[1][1]))
-#             print('fx_array: ___________________________')
+        
+        if FLAGS.output_path is not None:
+            if not os.path.exists(FLAGS.output_path):
+                os.mkdir(FLAGS.output_path)
+        output_file = '{}/{}_eval_loss_record.pickle-{}'.format(FLAGS.output_path, FLAGS.optimizer, FLAGS.problem)
+        with open(output_file, 'wb') as l_record:
+            pickle.dump(loss_record, l_record)
+        print("Saving evaluate loss record {}".format(output_file))
 
-        
-#         print('VAR_X: ', type(var_x))
-#         for i in range(len(var_x)):
-#             v = sess.run(var_x[i])
-#             print('SAVE VAR: ', str(v))
-#             np.save('./nilm_models/' + var_x[i].op.name.replace('/', '-'), v)
-        
-    if FLAGS.output_path is not None:
-        if not os.path.exists(FLAGS.output_path):
-            os.mkdir(FLAGS.output_path)
-    output_file = '{}/{}_eval_loss_record.pickle-{}'.format(FLAGS.output_path, FLAGS.optimizer, FLAGS.problem)
-    with open(output_file, 'wb') as l_record:
-        pickle.dump(loss_record, l_record)
-    print("Saving evaluate loss record {}".format(output_file))
+        if FLAGS.save:
+            print('VAR_X: ', type(problem_vars))
+            for i in range(len(problem_vars)):
+                v = sess.run(problem_vars[i])
+                np.save('./nilm_models/eval/' + FLAGS.optimizer + '/' + variable_names[i], v)
     
 
 

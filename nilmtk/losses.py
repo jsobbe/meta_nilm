@@ -5,6 +5,7 @@ def mae(app_gt,app_pred):
     return mean_absolute_error(app_gt,app_pred)
 
 def rmse(app_gt, app_pred):
+    print('Prediction mean: ', np.mean(app_pred))
     return mean_squared_error(app_gt,app_pred)**(.5)
 
 def f1score(app_gt, app_pred):

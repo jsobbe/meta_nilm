@@ -5,6 +5,7 @@ import nilm_seq2point
 import tensorflow as tf
 
 from nilmtk.dataset import DataSet
+from nilmtk.losses import *
 from nilmtk.metergroup import MeterGroup
 import pandas as pd
 from nilmtk.losses import *
@@ -47,7 +48,7 @@ def _get_appliance_params(train_appliances):
 
 class nilm_eval():
     
-    def __init__(self):
+    def __init__(self, problem):
         self.metrics = nilm_config.METRICS
         self.appliances = nilm_config.APPLIANCES
         self.drop_nans = nilm_config.DROP_NANS
@@ -58,11 +59,15 @@ class nilm_eval():
         self.batch_size = nilm_config.BATCH_SIZE
         self.artificial_aggregate = nilm_config.ARTIFICIAL_AGGREGATE
         self.test_submeters = []
+        self.errors = []
+        self.errors_keys = []
         self.do_preprocessing = nilm_config.PREPROCESSING
+        self.display_predictions = nilm_config.DISPLAY_PRED
+        self.optimizers = nilm_config.OPTIMIZERS
 
     def test(self):
         # store the test_main readings for all buildings
-        d = nilm_config.DATASETS_EVAL
+        d = nilm_config.DATASETS_TEST
 
         for dataset in d:
             print("Loading data for ",dataset, " dataset")
@@ -96,8 +101,8 @@ class nilm_eval():
                     for app_reading in appliance_readings:
                         test_mains+=app_reading
                         
-                for i, appliance_name in enumerate(self.appliances):
-                    self.test_submeters.append((appliance_name,[appliance_readings[i]]))
+                for i, appliance_name in enumerate(appliance_readings):
+                    self.test_submeters.append((self.appliances[i],[appliance_readings[i]]))
                 self.appliance_params = _get_appliance_params(self.test_submeters)
 
                 self.test_mains = [test_mains]
@@ -117,44 +122,48 @@ class nilm_eval():
         #TODO run multiple times with the same variables/references? -> Make problem instantiable with constructor and data
         window_size = nilm_config.WINDOW_SIZE
         
-        with tf.Session() as sess:
-            if self.do_preprocessing:
-                test_main_list = nilm_seq2point.call_preprocessing(test_elec, submeters_lst=None, method='nilm_test', window_size=window_size)
+        if self.do_preprocessing:
+            test_main_list = nilm_seq2point.call_preprocessing(test_elec, submeters_lst=None, method='nilm_test', window_size=window_size)
 
-            test_predictions = []
-            for test_main in test_main_list:
-                mains_len = len(test_main)
-                test_main = test_main.values
-                test_main = test_main.reshape((-1, window_size, 1))
-                test_main = tf.squeeze(tf.convert_to_tensor(test_main))
-                disggregation_dict = {}
+        test_predictions = []
+        for test_main in test_main_list:
+            mains_len = len(test_main)
+            test_main = test_main.values
+            test_main = test_main.reshape((-1, window_size, 1))
+            test_main = tf.squeeze(tf.convert_to_tensor(test_main))
+            disggregation_dict = {}
+            for optimizer in self.optimizers:
                 for appliance in self.appliances:
-                    problem = nilm_seq2point.model(mode='nilm_test', mains=test_main, mains_len=mains_len, load=True, appliance_name=appliance)
-                    prediction = sess.run(problem())
-                    print('adjusting predictions... .. .')
-                    prediction = self.appliance_params[appliance]['mean'] + prediction * self.appliance_params[appliance]['std'] #TODO make sure mean is calculated correctly in advance!
-                    valid_predictions = prediction.flatten()
-                    valid_predictions = np.where(valid_predictions > 0, valid_predictions, 0)
-                    df = pd.Series(valid_predictions)
-                    disggregation_dict[appliance] = df
-                results = pd.DataFrame(disggregation_dict, dtype='float32')
-                test_predictions.append(results)
-            return test_predictions
+                    with tf.Session() as sess:
+                        problem = nilm_seq2point.model(mode='nilm_test', mains=test_main, mains_len=mains_len, load=True, optimizer=optimizer, appliance_name=appliance)()
+                        sess.run(tf.global_variables_initializer())
+                        sess.run(tf.local_variables_initializer())
+                        prediction = sess.run(problem)
+                        prediction = self.appliance_params[appliance]['mean'] + prediction * self.appliance_params[appliance]['std'] #TODO make sure mean is calculated correctly in advance!
+#                         print('#1 Prediction mean: ', np.mean(prediction))
+#                         print('#1 Prediction std: ', np.std(prediction))
+                        valid_predictions = prediction.flatten()
+                        valid_predictions = np.where(valid_predictions > 0, valid_predictions, 0)
+                        df = pd.Series(valid_predictions)
+                        disggregation_dict[optimizer + '_' + appliance] = df
+            results = pd.DataFrame(disggregation_dict, dtype='float32')
+            test_predictions.append(results)
 
-
-            print('MADE PREDICTION:')
-            print('type: ', type(pred_result))
-            print('len: ', len(pred_result))
-            print('content: ', str(pred_result))
+            #print('MADE PREDICTION:')
+            #print('type: ', type(test_predictions))
+            #print('len: ', len(test_predictions))
+            #print('content: ', str(test_predictions))
         # TODO create nilm_seq2point.get_mains_and_subs_test for new method
 
         # It might not have time stamps sometimes due to neural nets
         # It has the readings for all the appliances
 
-        concat_pred_df = pd.concat(pred_list,axis=0)
+        concat_pred_df = pd.concat(test_predictions,axis=0)
 
         gt = {} # ground truth
         for meter,data in test_submeters:
+            print('Test sub meter:', type(meter))
+            print('Test sub data:', type(data))
             concatenated_df_app = pd.concat(data,axis=1)
             index = concatenated_df_app.index
             gt[meter] = pd.Series(concatenated_df_app.values.flatten(),index=index)
@@ -165,18 +174,26 @@ class nilm_eval():
         for app_name in concat_pred_df.columns:
             app_series_values = concat_pred_df[app_name].values.flatten()
             # Neural nets do extra padding sometimes, to fit, so get rid of extra predictions
-            app_series_values = app_series_values[:len(gt_overall[app_name])]
+            app_series_values = app_series_values[:len(gt_overall[app_name.split('_')[-1]])]
             pred[app_name] = pd.Series(app_series_values, index = gt_overall.index)
+            print('pred for ', app_name, ' mean: ', pred[app_name])
         pred_overall = pd.DataFrame(pred,dtype='float32')
 
+        print('gt type: ', type(gt_overall))
+        print('gt: ', gt_overall)
+        print('pred type: ', type(pred_overall))
+        print('pred: ', pred_overall)
         return gt_overall, pred_overall
 
 
     # metrics
     def compute_loss(self,gt,clf_pred, loss_function):
         error = {}
-        for app_name in gt.columns:
-            error[app_name] = loss_function(gt[app_name],clf_pred[app_name])
+        for app_name in clf_pred.columns:
+            print('APP NAME: , ', app_name)
+            print('GT: , ', gt[app_name.split('_')[-1]])
+            print('PRED: , ', clf_pred[app_name])
+            error[app_name] = loss_function(app_gt=gt[app_name.split('_')[-1]], app_pred=clf_pred[app_name])
         return pd.Series(error)        
 
     def call_predict(self, timezone):
@@ -187,8 +204,7 @@ class nilm_eval():
 
         pred_overall={}
         gt_overall={}       # ground truth     
-        gt_overall,pred_overall=self.predict(self.test_mains,self.test_submeters, 
-                                                       self.sample_period, timezone)
+        gt_overall, pred_overall = self.predict(self.test_mains, self.test_submeters, self.sample_period, timezone)
 
         self.gt_overall=gt_overall
         self.pred_overall=pred_overall
@@ -197,14 +213,13 @@ class nilm_eval():
             return None
         for metric in self.metrics:
             try:
-                loss_function = globals()[metric]                
+                loss_function = globals()[metric]               
             except:
                 print ("Loss function ",metric, " is not supported currently!")
                 continue
 
             computed_metric={}
-            for clf_name,clf in classifiers:
-                computed_metric[clf_name] = self.compute_loss(gt_overall, pred_overall[clf_name], loss_function)
+            computed_metric = self.compute_loss(gt_overall, pred_overall, loss_function)
             computed_metric = pd.DataFrame(computed_metric)
             print("............ " ,metric," ..............")
             print(computed_metric) 
@@ -213,17 +228,19 @@ class nilm_eval():
 
 
         if self.display_predictions:
-            for i in gt_overall.columns:
+            for i in pred_overall.columns:
                 plt.figure()
                 #plt.plot(self.test_mains[0],label='Mains reading')
-                plt.plot(gt_overall[i],label='Truth')
-                plt.plot(pred_overall[i])
+                plt.plot(gt_overall[i.split('_')[-1]],label='Truth')
+                plt.plot(pred_overall[i],label='Pred')
                 plt.xticks(rotation=90)
                 plt.title(i)
                 plt.legend()
                 plt.xlabel('Time')
                 plt.ylabel('Power (W)')
-            plt.show()
+                plt.yscale("log")
+                plt.savefig('./nilm_results/' + i + '.png')
+            plt.show(block=True)
 
 if __name__ == "__main__":
-    nilm_eval().test()
+    nilm_eval(None).test()

@@ -138,13 +138,14 @@ def _get_mean_and_std(mains):
     return mean, std
 
 
-def model(mains=None, appliances=None, appliance_name='default', mains_len=0, activation="sigmoid", mode="train", load=False):
+def model(mains=None, appliances=None, appliance_name='default', mains_len=0, optimizer="L2L", mode="train", load=False):
     
 #     models = OrderedDict()
     file_prefix = "{}-temp-weights".format("nilm-seq")
     window_size = nilm_config.WINDOW_SIZE
     batch_size = nilm_config.BATCH_SIZE
     batch_norm = nilm_config.BATCH_NORM
+     
 
     """
     Build the whole tf pipeline.
@@ -153,21 +154,25 @@ def model(mains=None, appliances=None, appliance_name='default', mains_len=0, ac
         if window_size % 2 == 0:
             print("Sequence length should be odd!")
             raise SequenceLengthError
+        if not load:
+            print('Building model for optimizer ', optimizer, ' and mode ', mode)
+        else:
+            print('Loading model for optimizer ', optimizer, ' and mode ', mode)
         
         indices_t = tf.random_uniform([batch_size], 0, mains_len, tf.int64) #TODO return indices too?
         
         # If no appliances are provided, model is presumably used for prediction, so only return output
         if appliances is not None:
             mains_batch = tf.gather(mains, indices_t, axis = 0)
-            output = tf.squeeze(network_seq(mains_batch, mode == 'train', load))
+            output = tf.squeeze(network_seq(mains_batch))
             appl_batch = tf.gather(appliances, indices_t, axis = 0)
-            return tf.reduce_mean(tf.abs(appl_batch - output)), appl_batch, output # custom mean absolute error
+            return _rsme(targets=appl_batch, outputs=output), appl_batch, output # custom mean absolute error
         else:
             mains_batch = tf.convert_to_tensor(mains)
-            output = tf.squeeze(network_seq(mains_batch, mode == 'train', load))
+            output = tf.squeeze(network_seq(mains_batch))
             return output
         
-    def conv_layer(inputs, strides, filter_size, output_channels, padding, name, training, load=False):
+    def conv_layer(inputs, strides, filter_size, output_channels, padding, name):
         # get size of last layer
         n_channels = int(inputs.get_shape()[-1])
         with tf.variable_scope(name, reuse=tf.AUTO_REUSE) as scope:
@@ -175,13 +180,15 @@ def model(mains=None, appliances=None, appliance_name='default', mains_len=0, ac
                 # init random weights
                 kernel1 = tf.get_variable('weights',
                                           dtype=tf.float32,
-                                          initializer=tf.constant(np.load('./nilm_models/'
+                                          initializer=tf.constant(np.load('./nilm_models/eval/'
+                                                                          + optimizer + '/'
                                                                           + name + '-weights.npy'))
                                           )
 
                 # init bias
                 biases1 = tf.get_variable('biases', 
-                                          initializer=tf.constant(np.load('./nilm_models/'
+                                          initializer=tf.constant(np.load('./nilm_models/eval/'
+                                                                          + optimizer + '/'
                                                                           + name + '-biases.npy')))
             else:
                 # init random weights
@@ -197,11 +204,11 @@ def model(mains=None, appliances=None, appliance_name='default', mains_len=0, ac
         inputs = tf.squeeze(tf.nn.conv1d(tf.expand_dims(inputs, axis=0), kernel1, strides, padding))
         inputs = tf.nn.bias_add(inputs, biases1)
         if batch_norm:
-            inputs = tf.layers.batch_normalization(inputs, training=training)# TODO necessary?
+            inputs = tf.layers.batch_normalization(inputs, training=mode=='train')# TODO necessary?
         inputs = tf.nn.relu(inputs)
         return inputs
         
-    def dense_layer(inputs, units, name, relu=False, load=False):
+    def dense_layer(inputs, units, name, relu=False):
         # -1 means autofill
 #         inputs = tf.reshape(inputs, [units, -1])
         fc_shape2 = int(inputs.get_shape()[-1])
@@ -209,24 +216,26 @@ def model(mains=None, appliances=None, appliance_name='default', mains_len=0, ac
         with tf.variable_scope(name, reuse=tf.AUTO_REUSE) as scope:
             if load:
                 # init random weights
-                weights = tf.get_variable('fc_weights',
+                weights = tf.get_variable('weights',
                                           dtype=tf.float32,
-                                          initializer=tf.constant(np.load('./nilm_models/'
-                                                                          + name + '-fc_weights.npy'))
+                                          initializer=tf.constant(np.load('./nilm_models/eval/'
+                                                                          + optimizer + '/'
+                                                                          + name + '-weights.npy'))
                                           )
 
                 # init bias
-                bias = tf.get_variable('fc_bias', 
-                                          initializer=tf.constant(np.load('./nilm_models/'
-                                                                          + name + '-fc_bias.npy')))
+                bias = tf.get_variable('biases', 
+                                          initializer=tf.constant(np.load('./nilm_models/eval/' 
+                                                                          + optimizer + '/'
+                                                                          + name + '-biases.npy')))
             else:
-                weights = tf.get_variable("fc_weights",
+                weights = tf.get_variable("weights",
                                       shape=[fc_shape2, units],
                                       dtype=tf.float32,
                                       initializer=tf.random_normal_initializer(stddev=0.01))
                 # Initialize constant biases and save in fc_bias
-                bias = tf.get_variable("fc_bias",
-                                   shape=[units, ],
+                bias = tf.get_variable("biases",
+                                   shape=[units],
                                    dtype=tf.float32,
                                    initializer=tf.constant_initializer(0.0))
         # add dense layer with weights, biases and the relu activation function
@@ -237,36 +246,43 @@ def model(mains=None, appliances=None, appliance_name='default', mains_len=0, ac
         return inputs
         
     # TODO rework based on paper and nilm implementation
-    def network_seq(inputs, training=True, load=False):
+    def network_seq(inputs):
         print('Shape: ', inputs.get_shape())
         inputs = conv_layer(inputs, strides=1, filter_size=10, output_channels=30, 
-                            padding="SAME", name='conv_1', training=training, load=load)
+                            padding="SAME", name='conv_1')
         print('Shape: ', inputs.get_shape())
         inputs = conv_layer(inputs, strides=1, filter_size=8, output_channels=30, 
-                            padding="SAME", name='conv_2', training=training, load=load)
+                            padding="SAME", name='conv_2')
         print('Shape: ', inputs.get_shape())
         inputs = conv_layer(inputs, strides=1, filter_size=6, output_channels=40, 
-                            padding="SAME", name='conv_3', training=training, load=load)
+                            padding="SAME", name='conv_3')
         print('Shape: ', inputs.get_shape())
         inputs = conv_layer(inputs, strides=1, filter_size=5, output_channels=50, 
-                            padding="SAME", name='conv_4', training=training, load=load)
+                            padding="SAME", name='conv_4')
         print('Shape: ', inputs.get_shape())
         inputs = tf.nn.dropout(inputs, rate=0.2)
         inputs = conv_layer(inputs, strides=1, filter_size=5, output_channels=50, 
-                            padding="SAME", name='conv_5', training=training, load=load)
+                            padding="SAME", name='conv_5')
         print('Shape post conv: ', inputs.get_shape())
 #         print(str(inputs.get_shape().as_list()))
-        inputs = tf.reshape(inputs, [batch_size, -1])
+        if mode is not 'nilm_test':
+            inputs = tf.reshape(inputs, [batch_size, -1])
         inputs = tf.nn.dropout(inputs, rate=0.2)
 #         inputs = tf.layers.Flatten()(inputs)
 #         inputs = tf.layers.dense(inputs=inputs, units=1024, activation=tf.nn.relu)
-        inputs = dense_layer(inputs, 1024, 'dense_1', relu=True, load=load) #TODO make 1024 work
+        inputs = dense_layer(inputs, 1024, 'dense_1', relu=True) #TODO make 1024 work
         print('Shape: ', inputs.get_shape())
         inputs = tf.nn.dropout(inputs, rate=0.2)
 #         inputs = tf.layers.dense(inputs=inputs, units=1)
-        inputs = dense_layer(inputs, 1, 'dense_2', load=load) # TODO final layer should be linear? How?
+        inputs = dense_layer(inputs, 1, 'dense_2') # TODO final layer should be linear? How?
         print('Shape post dense: ', inputs.get_shape())
         return inputs
+    
+    def _mae(targets, outputs):
+        return tf.reduce_mean(tf.abs(targets - outputs))
+        
+    def _rsme(targets, outputs):
+        return tf.sqrt(tf.reduce_mean((targets - outputs)**2))
 
 
     return build
