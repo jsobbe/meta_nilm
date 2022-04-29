@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Learning to learn (meta) optimizer."""
+"""Learning to learn (meta) optimizer. Used only for Evaluation!""" # TODO why??
 
 from __future__ import absolute_import
 from __future__ import division
@@ -23,6 +23,7 @@ import contextlib
 import os
 import pdb
 
+import numpy as np
 import mock
 import sonnet as snt
 import tensorflow as tf
@@ -378,17 +379,14 @@ class MetaOptimizer(object):
 
     # Are these final results after training network?
     with tf.name_scope("fx"):
-      fx_final, _, _ = _make_with_custom_variables(make_loss, x_final)
+      fx_final, gt, pred = _make_with_custom_variables(make_loss, x_final)
       fx_array = fx_array.write(len_unroll, fx_final)
     
-    with tf.Session() as sess: 
-        truth_array = sess.run(self.truth.stack())
-#         self.truth.mark_used()
-        pred_array = sess.run(self.prediction.stack())
-#         self.prediction.mark_used()
-        df = pd.DataFrame({'truth':[truth_array], 
-                           'prediction':[pred_array]})
-        df.to_csv('./nilm_results/pred.csv')
+    with tf.Session() as sess:
+      gt_final = sess.run(gt)
+      print('Start ground truth appliance data has mean of ' + 
+              str(np.mean(gt_final)) + ' and std of ' + str(np.std(gt_final)) + '.')
+
     loss = tf.reduce_sum(fx_array.stack(), name="loss")
 
     # Reset the state; should be called at the beginning of an epoch.
@@ -410,7 +408,7 @@ class MetaOptimizer(object):
       print("Optimizer '{}' variables".format(k))
       print([op for op in snt.get_variables_in_module(net)])
 
-    return MetaLoss(loss, update, reset, fx_final, x_final), fx_array, x_final, s_final
+    return MetaLoss(loss, update, reset, fx_final, x_final), fx_array, x_final, s_final, gt, pred
 
   def meta_minimize(self, make_loss, len_unroll, learning_rate=0.01, **kwargs):
     """Returns an operator minimizing the meta-loss.
@@ -425,8 +423,8 @@ class MetaOptimizer(object):
     Returns:
       namedtuple containing (step, update, reset, fx, x)
     """
-    info, _, _, _ = self.meta_loss(make_loss, len_unroll, **kwargs)
+    info, _, _, _, gt, pred = self.meta_loss(make_loss, len_unroll, **kwargs)
     optimizer = tf.train.AdamOptimizer(learning_rate)
     step = optimizer.minimize(info.loss)
     # wraps step and meta_loss result in named_tuple
-    return MetaStep(step, *info[1:])
+    return MetaStep(step, *info[1:]), gt, pred

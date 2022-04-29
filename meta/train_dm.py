@@ -46,7 +46,7 @@ flags.DEFINE_float("learning_rate", 0.001, "Learning rate.")
 flags.DEFINE_boolean("second_derivatives", False, "Use second derivatives.")
 
 flags.DEFINE_string("problem", "mnist", "Type of problem.")
-flags.DEFINE_boolean("save", True, "Whether to save the resulting nilm-model.")
+flags.DEFINE_boolean("save", False, "Whether to save the resulting nilm-model.")
 
 flags.DEFINE_boolean("if_scale", False, "")
 flags.DEFINE_float("rd_scale_bound", 3.0, "Bound for random scaling on the main optimizee.")
@@ -56,13 +56,15 @@ flags.DEFINE_integer("min_num_eval", 3, "")
 
 flags.DEFINE_boolean("if_mt", False, "") # enhanced 2: imitation technique
 flags.DEFINE_integer("num_mt", 1, "")
-flags.DEFINE_string("optimizers", "adam", ".")
+flags.DEFINE_string("optimizers", "adam", ".") # split by comma
 flags.DEFINE_float("mt_ratio", 0.3, "")
 flags.DEFINE_string("mt_ratios", "0.0 0.1 0.3 0.3 0.3 0.3 0.3 0.3", "") # TODO are those the rations per task?
 flags.DEFINE_integer("k", 1, "")
 
 
 def main(_):
+    np.set_printoptions(precision=3)
+    
     if FLAGS.unroll_length > FLAGS.num_steps:
         raise ValueError('Unroll length larger than steps!')
     
@@ -86,14 +88,16 @@ def main(_):
     # Optimizer setup.
     optimizer = meta.MetaOptimizer(FLAGS.num_mt, **net_config)
     minimize, scale, var_x, constants, subsets, \
-        loss_mt, steps_mt, update_mt, reset_mt, mt_labels, mt_inputs = optimizer.meta_minimize(
+        loss_mt, steps_mt, update_mt, reset_mt, mt_labels, mt_inputs, gt, pred = optimizer.meta_minimize(
             problem, FLAGS.unroll_length,
             learning_rate=FLAGS.learning_rate,
             net_assignments=net_assignments,
             second_derivatives=FLAGS.second_derivatives)
-    step, update, reset, cost_op, _ = minimize
+    step, update, reset, cost_op, _ = minimize 
     
     print('VAR_X before:', var_x)
+    print('Reset:', type(reset))
+    print('Reset:', str(reset))
 
     # Data generator for multi-task learning.
     if FLAGS.if_mt:
@@ -128,6 +132,7 @@ def main(_):
         improved = False
         mti = -1
         for e in xrange(FLAGS.num_epochs):
+            print('Run EPOCH: ', e)
             # Pick a task if it's multi-task learning.
             if FLAGS.if_mt:
                 if FLAGS.if_cl:
@@ -148,6 +153,7 @@ def main(_):
             # Training.
             if FLAGS.if_cl:
                 num_unrolls_cur = num_unrolls[curriculum_idx]
+                print('Will be unrolled ', num_unrolls_cur, ' times')
             else:
                 num_unrolls_cur = num_unrolls
 
@@ -173,7 +179,7 @@ def main(_):
                                             data=data_e,
                                             label_pl=mt_labels[task_i],
                                             input_pl=mt_inputs[task_i])
-            print('EPOCH: ', e)
+            print('Finished EPOCH: ', e)
             print ("training_loss={}".format(cost))
 
             # Evaluation after FLAGS.evaluation_period epochs.
@@ -234,6 +240,13 @@ def main(_):
                 elif num_eval >= FLAGS.min_num_eval and not improved:
                     print ("no improve during curriculum {} --> stop".format(curriculum_idx))
                     break
+                    
+            gt_final = sess.run(gt)
+            print('Final ground truth appliance data has mean of ' + 
+                  str(np.mean(gt_final)) + ' and std of ' + str(np.std(gt_final)) + '.')
+            pred_final = sess.run(pred)
+            print('Final predicted appliance data has mean of ' + 
+                  str(np.mean(pred_final)) + ' and std of ' + str(np.std(pred_final)) + '.')
                   
         if FLAGS.save:
             print('VAR_X: ', type(var_x))

@@ -41,7 +41,7 @@ flags.DEFINE_string("problem", "simple", "Type of problem.")
 
 flags.DEFINE_string("path", None, "Path to saved meta-optimizer network.")
 flags.DEFINE_string("output_path", None, "Path to output results.")
-flags.DEFINE_boolean("save", True, "Whether to save the resulting nilm-model.")
+flags.DEFINE_boolean("save", False, "Whether to save the resulting nilm-model.")
 
 flags.DEFINE_integer("num_epochs", 1, "Number of evaluation epochs.")
 flags.DEFINE_integer("num_steps", 10000, "Number of optimization steps per epoch.")
@@ -67,6 +67,7 @@ variable_names = {
 
 
 def main(_):
+    np.set_printoptions(precision=3)
     # Configuration.
     num_unrolls = FLAGS.num_steps
     if FLAGS.seed:
@@ -74,10 +75,12 @@ def main(_):
 
     # Problem, NET_CONFIG = predefined conf for META-net, NET_ASSIGNMENTS = None
     problem, net_config, net_assignments = util.get_config(FLAGS.problem, FLAGS.path)
+    
+    print('NET_CONFIG: ', net_config)
 
     # Optimizer setup.
     if FLAGS.optimizer == "Adam":
-        cost_op, ground_truth, prediction = problem()
+        cost_op, gt, pred = problem()
         problem_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)
         problem_reset = tf.variables_initializer(problem_vars)
 
@@ -89,7 +92,7 @@ def main(_):
         if FLAGS.path is None:
             logging.warning("Evaluating untrained L2L optimizer")
         optimizer = meta.MetaOptimizer(**net_config)
-        meta_loss, fx_array, problem_vars, s_final = optimizer.meta_loss(problem, 1, net_assignments=net_assignments)
+        meta_loss, fx_array, problem_vars, s_final, gt, pred = optimizer.meta_loss(problem, 1, net_assignments=net_assignments)
         _, update, reset, cost_op, _ = meta_loss
     else:
         raise ValueError("{} is not a valid optimizer".format(FLAGS.optimizer))
@@ -127,11 +130,24 @@ def main(_):
             pickle.dump(loss_record, l_record)
         print("Saving evaluate loss record {}".format(output_file))
 
+        
+        gt_final = sess.run(gt)
+        print('Final ground truth appliance data has mean of ' + 
+              str(np.mean(gt_final)) + ' and std of ' + str(np.std(gt_final)) + '.')
+        pred_final = sess.run(pred)
+        print('Final predicted appliance data has mean of ' + 
+              str(np.mean(pred_final)) + ' and std of ' + str(np.std(pred_final)) + '.')
+        
         if FLAGS.save:
             print('VAR_X: ', type(problem_vars))
+            print('VAR_X length: ', len(problem_vars))
+            print('VAR_X content: ', str(problem_vars))
+            count = 0
             for i in range(len(problem_vars)):
-                v = sess.run(problem_vars[i])
-                np.save('./nilm_models/eval/' + FLAGS.optimizer + '/' + variable_names[i], v)
+                if not problem_vars[i].name.startswith('batch_norm'):
+                    v = sess.run(problem_vars[i])
+                    np.save('./nilm_models/eval/' + FLAGS.optimizer + '/' + variable_names[count], v)
+                    count += 1
     
 
 

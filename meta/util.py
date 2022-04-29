@@ -35,13 +35,17 @@ def run_epoch(sess, cost_op, ops, reset, num_unrolls,
               scale=None, rd_scale=False, rd_scale_bound=3.0, assign_func=None, var_x=None,
               step=None, unroll_len=None,
               task_i=-1, data=None, label_pl=None, input_pl=None):
+  print('Unrolling training epoch ', num_unrolls, ' times.')
   """Runs one optimization epoch."""
   start = timer()
   sess.run(reset)
+
+#   v = sess.run(var_x[0])
+#   print('Weights after reset: ', str(v[0]))
+
   cost = None
   result = ['', '']
   if task_i == -1:
-#       print('num_unrolls: ', num_unrolls)
       if rd_scale:
         assert scale is not None
         randomized_scale = []
@@ -58,23 +62,15 @@ def run_epoch(sess, cost_op, ops, reset, num_unrolls,
         assign_func(k_value_list)
         # zip() creates tuples from items of both lists
         feed_rs = {p: v for p, v in zip(scale, randomized_scale)}
-#         print('Random scale: ', str(scale))
       else:
-#         print('No random scale')
         feed_rs = {}
       feed_dict = feed_rs
-#       print('PRE-LOOP')
       for i in xrange(num_unrolls):
-#         print('LOOP: ', i)
-#         print('cost_op: ', [cost_op])
-#         print('ops: ', ops)
-#         print('feed_dict: ', feed_dict)
         if step is not None:
             feed_dict[step] = i*unroll_len+1
         result = sess.run([cost_op] + ops, feed_dict=feed_dict)
         cost = result[0]
   else: # if multitask learning. But how is task selected?
-#       print('EPOCH')
       assert data is not None
       assert input_pl is not None
       assert label_pl is not None
@@ -88,15 +84,16 @@ def run_epoch(sess, cost_op, ops, reset, num_unrolls,
               feed_dict[step] = ri * unroll_len + 1
           result = sess.run([cost_op] + ops, feed_dict=feed_dict)
           cost = result[0]
-#           print('loss: ', cost)
-#   vars = result[1]
-#   print('RESULT: ', str(type(vars)))
-#   print('RESULT: ', str(vars))
+            
+#   v = sess.run(var_x[0])
+#   print('Weights at end of epoch: ', str(v[0]))
+    
   return timer() - start, cost
 
 
 def run_eval_epoch(sess, cost_op, ops, num_unrolls, step=None, unroll_len=None):
   """Runs one optimization epoch."""
+  print('Unrolling evaluation epoch ', num_unrolls, ' times.')
   start = timer()
   # sess.run(reset)
   total_cost = []
@@ -105,14 +102,6 @@ def run_eval_epoch(sess, cost_op, ops, num_unrolls, step=None, unroll_len=None):
     if step is not None:
         feed_dict[step] = i * unroll_len + 1
     result = sess.run([cost_op] + ops, feed_dict=feed_dict)
-#     if i == num_unrolls - 1:
-#         print('RESULT IS: ', type(result))
-#         print('RESULT LEN: ', len(result))
-#         print('RESULT VAR LEN: ', len(result[1]))
-#         for ele in result[1]:
-#             print('ELE IS: ', type(ele))
-#             print('ELE LEN: ', len(ele))
-#             print('ELE: ', str(ele[0]))
     cost = result[0]
     total_cost.append(cost)
   return timer() - start, total_cost, result[-1]
@@ -142,17 +131,14 @@ def _prepare_nilm_data(mode="train"):
         data=nilm_config.DATASETS_TRAIN
     else:
         data=nilm_config.DATASETS_EVAL
-    drop_nans = nilm_config.DROP_NANS
-    power = nilm_config.POWER
     appliances = nilm_config.APPLIANCES
     window_size = nilm_config.WINDOW_SIZE
-    sample_period = nilm_config.SAMPLE_PERIOD
     batch_size = nilm_config.BATCH_SIZE
-    artificial_aggregate = nilm_config.ARTIFICIAL_AGGREGATE
+    do_preprocessing = nilm_config.PREPROCESSING
     load = False
     
     mains, subs = nilm_seq2point.get_mains_and_subs_train(
-        data, appliances[0], power, drop_nans, sample_period, artificial_aggregate)#TODO
+        data, appliances[0])#TODO
 
     mains, appls = nilm_seq2point.call_preprocessing(mains, subs, 'train', window_size)
     # TODO check method='train'
@@ -190,6 +176,7 @@ def get_config(problem_name, path=None, mode=None, num_hidden_layer=None, net_na
     mains, appls, mains_len = _prepare_nilm_data(mode)
     
     problem = nilm_seq2point.model(mode=mode, mains=mains, appliances=appls, mains_len=mains_len, appliance_name='fridge') # TODO get from somewhere else
+    
     net_config = {"cw": get_default_net_config(path)} # meta net?!
     net_assignments = None
 # ----------------------- RELEVANT -------------------------

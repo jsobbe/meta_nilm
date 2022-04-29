@@ -9,6 +9,7 @@ import pandas as pd
 import tarfile
 import sys
 
+
 from collections import OrderedDict
 
 BASE_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -23,6 +24,7 @@ import tensorflow as tf
 import pdb
 from vgg16 import VGG16
 import tensorflow_probability as tfp
+import matplotlib.pyplot as plt
 
 import nilm_config
 
@@ -34,8 +36,11 @@ _nn_initializers = {
 }
 
 
-def get_mains_and_subs_train(datasets, appliance_name, power, drop_nans, sample_period=1, artificial_aggregate=False):
-
+def get_mains_and_subs_train(datasets, appliance_name):
+    power = nilm_config.POWER
+    sample_period = nilm_config.SAMPLE_PERIOD
+    drop_nans = nilm_config.DROP_NANS
+    artificial_aggregate = nilm_config.ARTIFICIAL_AGGREGATE
     # This function has a few issues, which should be addressed soon
     print("............... Loading Data for training ...................")
     # store the train_main readings for all buildings
@@ -93,41 +98,50 @@ def _dropna(mains_df, appliance_df):
         return mains_df, new_appliances_df
 
 def call_preprocessing(mains_lst, submeters_lst, method, window_size):
+    print("\n< BEGIN PREPROCESSING >")
     mains_mean, mains_std = _get_mean_and_std(mains_lst)
+    print('Mean in mains data: ', mains_mean)
+    print('Std in mains data: ', mains_std)
+    print('Max in mains data: ', np.max(np.array(pd.concat(mains_lst,axis=0))))
+    print('Min in mains data: ', np.min(np.array(pd.concat(mains_lst,axis=0))))
     
-    if method == 'train' or method == 'eval':
-        mains_df_list = []
-        for mains in mains_lst:
-            new_mains = mains.values.flatten()
-            n = window_size
-            units_to_pad = n // 2
-            new_mains = np.pad(new_mains, (units_to_pad, units_to_pad), 'constant', constant_values=(0, 0))
-            new_mains = np.array([new_mains[i:i + n] for i in range(len(new_mains) - n + 1)])
-            new_mains = (new_mains - mains_mean) / mains_std
-            mains_df_list.append(pd.DataFrame(new_mains))
-
+    mains_df_list = []
+    for mains in mains_lst:
+        new_mains = mains.values.flatten()
+        n = window_size
+        units_to_pad = n // 2
+        new_mains = np.pad(new_mains, (units_to_pad, units_to_pad), 'constant', constant_values=(0, 0))
+        new_mains = np.array([new_mains[i:i + n] for i in range(len(new_mains) - n + 1)])
+#         print(str(new_mains))
+        new_mains = (new_mains - mains_mean) / mains_std
+        print('Mains mean after preprocessing: ', np.mean(new_mains))
+        print('Mains std after preprocessing: ', np.std(new_mains))
+        print('Mains max after preprocessing: ', np.max(new_mains))
+        print('Mains min after preprocessing: ', np.min(new_mains), ' \n')
+        mains_df_list.append(pd.DataFrame(new_mains))
+        
+    if submeters_lst:
+        # Appliances don't need to be processed, when evaluating the nilm model
         appliance_list = []
         app_mean, app_std = _get_mean_and_std(submeters_lst)
+        print('Mean in apps data: ', app_mean)
+        print('Std in apps data: ', app_std)
+        print('Max in apps data: ', np.max(np.array(pd.concat(submeters_lst,axis=0))))
+        print('Min in apps data: ', np.min(np.array(pd.concat(submeters_lst,axis=0))))
         for app_df in submeters_lst:
             new_app_readings = app_df.values.reshape((-1, 1))
             # This is for choosing windows
             new_app_readings = (new_app_readings - app_mean) / app_std
             # Return as a list of dataframe
             appliance_list.append(pd.DataFrame(new_app_readings))
-        return mains_df_list, appliance_list
+            print('Apps mean data after preprocessing: ', np.mean(new_app_readings))
+            print('Apps std data after preprocessing: ', np.std(new_app_readings))
+            print('Apps max data after preprocessing: ', np.max(new_app_readings))
+            print('Apps min data after preprocessing: ', np.min(new_app_readings))
+    print("< END PREPROCESSING > \n")
+    
+    return mains_df_list, appliance_list
 
-    elif method == 'nilm_test':
-        mains_df_list = []
-
-        for mains in mains_lst:
-            new_mains = mains.values.flatten()
-            n = window_size
-            units_to_pad = n // 2
-            new_mains = np.pad(new_mains, (units_to_pad, units_to_pad), 'constant', constant_values=(0, 0))
-            new_mains = np.array([new_mains[i:i + n] for i in range(len(new_mains) - n + 1)])
-            new_mains = (new_mains - mains_mean) / mains_std
-            mains_df_list.append(pd.DataFrame(new_mains))
-        return mains_df_list
     
 def _get_mean_and_std(mains):
     l = np.array(pd.concat(mains,axis=0))
@@ -138,12 +152,11 @@ def _get_mean_and_std(mains):
     return mean, std
 
 
-def model(mains=None, appliances=None, appliance_name='default', mains_len=0, optimizer="L2L", mode="train", load=False):
+def model(mains=None, appliances=None, appliance_name='default', mains_len=0, optimizer="L2L", mode="train", load=False, batch_size=nilm_config.BATCH_SIZE):
     
 #     models = OrderedDict()
     file_prefix = "{}-temp-weights".format("nilm-seq")
     window_size = nilm_config.WINDOW_SIZE
-    batch_size = nilm_config.BATCH_SIZE
     batch_norm = nilm_config.BATCH_NORM
      
 
@@ -159,18 +172,23 @@ def model(mains=None, appliances=None, appliance_name='default', mains_len=0, op
         else:
             print('Loading model for optimizer ', optimizer, ' and mode ', mode)
         
+#         with tf.Session() as sess:
+#             print('Mains data has mean of ' + np.mean(mains.eval(sess)) + ' and std of ' + np.std(mains.eval(sess)) + '.')
+#             print('Appliance data has mean of ' +  np.mean(appliances.eval(sess)) + ' and std of ' + np.std(appliances.eval(sess)) + '.')
+        
         indices_t = tf.random_uniform([batch_size], 0, mains_len, tf.int64) #TODO return indices too?
         
         # If no appliances are provided, model is presumably used for prediction, so only return output
         if appliances is not None:
             mains_batch = tf.gather(mains, indices_t, axis = 0)
+            print('Shape after gather: ', mains_batch.get_shape())
             output = tf.squeeze(network_seq(mains_batch))
             appl_batch = tf.gather(appliances, indices_t, axis = 0)
-            return _rsme(targets=appl_batch, outputs=output), appl_batch, output # custom mean absolute error
+            return _mse(targets=appl_batch, outputs=output), appl_batch, output
         else:
-            mains_batch = tf.convert_to_tensor(mains)
+            mains_batch = tf.gather(mains, indices_t, axis = 0)
             output = tf.squeeze(network_seq(mains_batch))
-            return output
+            return output # TODO is the output not random now? Is that comparable for a prediction?
         
     def conv_layer(inputs, strides, filter_size, output_channels, padding, name):
         # get size of last layer
@@ -197,11 +215,12 @@ def model(mains=None, appliances=None, appliance_name='default', mains_len=0, op
                                           dtype=tf.float32,
                                           initializer=tf.random_normal_initializer(stddev=0.01)
                                           )
-
+                print('Weights for ', name, ': ', str(kernel1))
                 # init bias
                 biases1 = tf.get_variable('biases', [output_channels], 
                                           initializer=tf.constant_initializer(0.0))
-        inputs = tf.squeeze(tf.nn.conv1d(tf.expand_dims(inputs, axis=0), kernel1, strides, padding))
+        inputs = tf.nn.conv1d(inputs, kernel1, strides, padding)
+        inputs = tf.reshape(inputs, [batch_size, -1, output_channels])
         inputs = tf.nn.bias_add(inputs, biases1)
         if batch_norm:
             inputs = tf.layers.batch_normalization(inputs, training=mode=='train')# TODO necessary?
@@ -209,10 +228,8 @@ def model(mains=None, appliances=None, appliance_name='default', mains_len=0, op
         return inputs
         
     def dense_layer(inputs, units, name, relu=False):
-        # -1 means autofill
 #         inputs = tf.reshape(inputs, [units, -1])
         fc_shape2 = int(inputs.get_shape()[-1])
-        # Initialize random weights and save in fc_weights
         with tf.variable_scope(name, reuse=tf.AUTO_REUSE) as scope:
             if load:
                 # init random weights
@@ -233,6 +250,7 @@ def model(mains=None, appliances=None, appliance_name='default', mains_len=0, op
                                       shape=[fc_shape2, units],
                                       dtype=tf.float32,
                                       initializer=tf.random_normal_initializer(stddev=0.01))
+                print('Weights for ', name, ': ', str(weights))
                 # Initialize constant biases and save in fc_bias
                 bias = tf.get_variable("biases",
                                    shape=[units],
@@ -247,42 +265,46 @@ def model(mains=None, appliances=None, appliance_name='default', mains_len=0, op
         
     # TODO rework based on paper and nilm implementation
     def network_seq(inputs):
+        inputs = tf.reshape(inputs, [batch_size, window_size, -1])
         print('Shape: ', inputs.get_shape())
         inputs = conv_layer(inputs, strides=1, filter_size=10, output_channels=30, 
-                            padding="SAME", name='conv_1')
+                            padding="VALID", name='conv_1')
         print('Shape: ', inputs.get_shape())
         inputs = conv_layer(inputs, strides=1, filter_size=8, output_channels=30, 
-                            padding="SAME", name='conv_2')
+                            padding="VALID", name='conv_2')
         print('Shape: ', inputs.get_shape())
         inputs = conv_layer(inputs, strides=1, filter_size=6, output_channels=40, 
-                            padding="SAME", name='conv_3')
+                            padding="VALID", name='conv_3')
         print('Shape: ', inputs.get_shape())
         inputs = conv_layer(inputs, strides=1, filter_size=5, output_channels=50, 
-                            padding="SAME", name='conv_4')
+                            padding="VALID", name='conv_4')
         print('Shape: ', inputs.get_shape())
         inputs = tf.nn.dropout(inputs, rate=0.2)
         inputs = conv_layer(inputs, strides=1, filter_size=5, output_channels=50, 
-                            padding="SAME", name='conv_5')
+                            padding="VALID", name='conv_5')
         print('Shape post conv: ', inputs.get_shape())
 #         print(str(inputs.get_shape().as_list()))
-        if mode is not 'nilm_test':
-            inputs = tf.reshape(inputs, [batch_size, -1])
         inputs = tf.nn.dropout(inputs, rate=0.2)
+        inputs = tf.reshape(inputs, [batch_size, -1])
+        print('Shape post flatten: ', inputs.get_shape())
 #         inputs = tf.layers.Flatten()(inputs)
 #         inputs = tf.layers.dense(inputs=inputs, units=1024, activation=tf.nn.relu)
-        inputs = dense_layer(inputs, 1024, 'dense_1', relu=True) #TODO make 1024 work
+        inputs = dense_layer(inputs, 1024, 'dense_1', relu=True)
         print('Shape: ', inputs.get_shape())
         inputs = tf.nn.dropout(inputs, rate=0.2)
 #         inputs = tf.layers.dense(inputs=inputs, units=1)
         inputs = dense_layer(inputs, 1, 'dense_2') # TODO final layer should be linear? How?
-        print('Shape post dense: ', inputs.get_shape())
+        print('Shape post dense: ', inputs.get_shape(), ' \n')
         return inputs
     
     def _mae(targets, outputs):
         return tf.reduce_mean(tf.abs(targets - outputs))
         
-    def _rsme(targets, outputs):
+    def _rmse(targets, outputs):
         return tf.sqrt(tf.reduce_mean((targets - outputs)**2))
+    
+    def _mse(targets, outputs):
+        return tf.reduce_mean((targets - outputs)**2)
 
 
     return build

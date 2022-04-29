@@ -35,6 +35,7 @@ def opt_variables_initializer(opt, var_list, if_adam=False):
 class data_loader():
     def __init__(self, make_loss, x, constants, subsets, scale, optimizers, unroll_len):
         self.unroll_len = unroll_len
+        print('Optimizers: ', str(optimizers))
         self.optimizers = optimizers.split(",")
         self.num_subsets = len(subsets)
 
@@ -47,27 +48,31 @@ class data_loader():
         self.gradients_flat = [self.flatten_and_concat([self.gradients[i] for i in subset])
                                for subset in subsets]
         self.reset_x = tf.variables_initializer(x+constants)
+        print('---------------------------------------------------------')
+        print('Optimizers: ', str(self.optimizers))
         if "adam" in self.optimizers:
+            print('Using Adam for imitation')
             self.adam = tf.train.AdamOptimizer(0.01)
             self.update_adam = self.adam.apply_gradients(zip(self.gradients, x))
             self.reset_adam = opt_variables_initializer(self.adam, x, True)
         if "rmsprop" in self.optimizers:
+            print('Using Rmsprop for imitation')
             self.rmsprop = tf.train.RMSPropOptimizer(0.01)
             self.update_rmsprop = self.rmsprop.apply_gradients(zip(self.gradients, x))
             self.reset_rmsprop = opt_variables_initializer(self.rmsprop, x)
         if "nag" in self.optimizers:
+            print('Using nag for imitation')
             self.nag = tf.train.MomentumOptimizer(0.01, 0.9, use_nesterov=True)
             self.update_nag = self.nag.apply_gradients(zip(self.gradients, x))
             self.reset_nag = opt_variables_initializer(self.nag, x)
+        print('---------------------------------------------------------')
 
     def flatten_and_concat(self, var_list):
         var_flat = []
         for idx, var in enumerate(var_list):
-            print('before: ', var.get_shape())
             if idx < len(var_list) - 1:
                 var = tf.squeeze(tf.reshape(var, shape=(-1, 1)))
             var_flat.append(var)
-            print('after: ', var.get_shape())
         var_cat = tf.concat(var_flat, axis=0)
         return var_cat
 

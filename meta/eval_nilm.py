@@ -1,4 +1,3 @@
-import meta
 import util
 import nilm_config
 import nilm_seq2point
@@ -49,6 +48,8 @@ def _get_appliance_params(train_appliances):
 class nilm_eval():
     
     def __init__(self, problem):
+        np.set_printoptions(precision=3)
+    
         self.metrics = nilm_config.METRICS
         self.appliances = nilm_config.APPLIANCES
         self.drop_nans = nilm_config.DROP_NANS
@@ -116,38 +117,47 @@ class nilm_eval():
         """
         Generates predictions on the test dataset using the specified classifier.
         """
-
         # "ac_type" varies according to the dataset used. 
         # Make sure to use the correct ac_type before using the default parameters in this code.   
         #TODO run multiple times with the same variables/references? -> Make problem instantiable with constructor and data
-        window_size = nilm_config.WINDOW_SIZE
-        
         if self.do_preprocessing:
-            test_main_list = nilm_seq2point.call_preprocessing(test_elec, submeters_lst=None, method='nilm_test', window_size=window_size)
+            test_main_list, _ = nilm_seq2point.call_preprocessing(test_elec, submeters_lst=test_submeters, method='nilm_test', window_size=self.window_size)
+            
+        main_tensors = []
+        mains_len = 0
+        for main_df in test_main_list:
+            if not main_df.empty:
+                mains_len += len(main_df)
+            main_tensors.append(tf.convert_to_tensor(main_df))
+        if mains_len <= 1:
+            raise ValueError('No mains data found in provided time frame') 
+        print('num of mains:', mains_len)
+        mains_t = tf.squeeze(tf.convert_to_tensor(main_tensors))
 
         test_predictions = []
-        for test_main in test_main_list:
-            mains_len = len(test_main)
-            test_main = test_main.values
-            test_main = test_main.reshape((-1, window_size, 1))
-            test_main = tf.squeeze(tf.convert_to_tensor(test_main))
-            disggregation_dict = {}
-            for optimizer in self.optimizers:
-                for appliance in self.appliances:
-                    with tf.Session() as sess:
-                        problem = nilm_seq2point.model(mode='nilm_test', mains=test_main, mains_len=mains_len, load=True, optimizer=optimizer, appliance_name=appliance)()
-                        sess.run(tf.global_variables_initializer())
-                        sess.run(tf.local_variables_initializer())
-                        prediction = sess.run(problem)
-                        prediction = self.appliance_params[appliance]['mean'] + prediction * self.appliance_params[appliance]['std'] #TODO make sure mean is calculated correctly in advance!
-#                         print('#1 Prediction mean: ', np.mean(prediction))
-#                         print('#1 Prediction std: ', np.std(prediction))
-                        valid_predictions = prediction.flatten()
-                        valid_predictions = np.where(valid_predictions > 0, valid_predictions, 0)
-                        df = pd.Series(valid_predictions)
-                        disggregation_dict[optimizer + '_' + appliance] = df
-            results = pd.DataFrame(disggregation_dict, dtype='float32')
-            test_predictions.append(results)
+        disggregation_dict = {}
+        for optimizer in self.optimizers:
+            for appliance in self.appliances:
+                print("=========== PREDICTION for | ", appliance, ' | =============')
+                with tf.Session() as sess:
+                    problem = nilm_seq2point.model(mode='nilm_test', mains=mains_t, mains_len=mains_len, load=True, optimizer=optimizer, appliance_name=appliance, batch_size=mains_len)()
+                    sess.run(tf.global_variables_initializer())
+                    sess.run(tf.local_variables_initializer())
+                    result, gt, prediction = sess.run(problem)
+                    print('Resulting loss: ', result)
+                    print('Add appl mean: ', self.appliance_params[appliance]['mean'])
+                    print('Add appl std: ', self.appliance_params[appliance]['std'])
+                    print('Before adjusting prediction mean: ', np.mean(prediction))
+                    print('Before adjusting prediction std: ', np.std(prediction))
+                    prediction = self.appliance_params[appliance]['mean'] + prediction * self.appliance_params[appliance]['std'] #TODO make sure mean is calculated correctly in advance!
+                    print('After adjusting prediction mean: ', np.mean(prediction))
+                    print('After adjusting prediction std: ', np.std(prediction))
+                    valid_predictions = prediction.flatten()
+                    valid_predictions = np.where(valid_predictions > 0, valid_predictions, 0)
+                    df = pd.Series(valid_predictions)
+                    disggregation_dict[optimizer + '_' + appliance] = df
+        results = pd.DataFrame(disggregation_dict, dtype='float32')
+        test_predictions.append(results)
 
             #print('MADE PREDICTION:')
             #print('type: ', type(test_predictions))
@@ -162,8 +172,6 @@ class nilm_eval():
 
         gt = {} # ground truth
         for meter,data in test_submeters:
-            print('Test sub meter:', type(meter))
-            print('Test sub data:', type(data))
             concatenated_df_app = pd.concat(data,axis=1)
             index = concatenated_df_app.index
             gt[meter] = pd.Series(concatenated_df_app.values.flatten(),index=index)
@@ -199,12 +207,13 @@ class nilm_eval():
     def call_predict(self, timezone):
 
         """
-        This functions computes the predictions on the self.test_mains using all the trained models and then compares different learned models using the metrics specified
+        This functions computes the predictions on the self.test_mains using all the trained models 
+        and then compares different learned models using the metrics specified
         """
 
         pred_overall={}
         gt_overall={}       # ground truth     
-        gt_overall, pred_overall = self.predict(self.test_mains, self.test_submeters, self.sample_period, timezone)
+        gt_overall, pred_overall = self.predict(self.test_mains, None, self.sample_period, timezone)
 
         self.gt_overall=gt_overall
         self.pred_overall=pred_overall
