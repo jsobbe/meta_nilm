@@ -177,8 +177,23 @@ def get_config(problem_name, path=None, mode=None, num_hidden_layer=None, net_na
     
     problem = nilm_seq2point.model(mode=mode, mains=mains, appliances=appls, mains_len=mains_len, appliance_name='fridge') # TODO get from somewhere else
     
-    net_config = {"cw": get_default_net_config(path)} # meta net?!
-    net_assignments = None
+    c_path = None
+    d_path = None
+    if path:
+        c_path = path[0]
+        d_path = path[1]
+        
+    net_config = {
+        "conv": get_default_net_config(c_path),
+        "fc": get_default_net_config(d_path)
+    }
+    conv_vars = ["conv_{}/weights".format(i) for i in xrange(1, 6)]
+    conv_vars += ["conv_{}/biases".format(i) for i in xrange(1, 6)]
+    #conv_vars += ["conv_batch_norm_{}/beta".format(i) for i in xrange(5)]
+    fc_vars = ["dense_{}/weights".format(i) for i in xrange(1, 3)]
+    fc_vars += ["dense_{}/biases".format(i) for i in xrange(1, 3)]
+    #fc_vars += ["mlp/batch_norm/beta"]
+    net_assignments = [("conv", conv_vars), ("fc", fc_vars)]
 # ----------------------- RELEVANT -------------------------
 
   elif problem_name == "cifar_conv":

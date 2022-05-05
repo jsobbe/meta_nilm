@@ -121,7 +121,7 @@ class nilm_eval():
         # Make sure to use the correct ac_type before using the default parameters in this code.   
         #TODO run multiple times with the same variables/references? -> Make problem instantiable with constructor and data
         if self.do_preprocessing:
-            test_main_list, _ = nilm_seq2point.call_preprocessing(test_elec, submeters_lst=test_submeters, method='nilm_test', window_size=self.window_size)
+            test_main_list, _ = nilm_seq2point.call_preprocessing(test_elec, submeters_lst=None, method='nilm_test', window_size=self.window_size)
             
         main_tensors = []
         mains_len = 0
@@ -138,13 +138,18 @@ class nilm_eval():
         disggregation_dict = {}
         for optimizer in self.optimizers:
             for appliance in self.appliances:
-                print("=========== PREDICTION for | ", appliance, ' | =============')
+                print("=========== PREDICTION for | ", appliance, " | ", optimizer, " | =============")
                 with tf.Session() as sess:
                     problem = nilm_seq2point.model(mode='nilm_test', mains=mains_t, mains_len=mains_len, load=True, optimizer=optimizer, appliance_name=appliance, batch_size=mains_len)()
                     sess.run(tf.global_variables_initializer())
                     sess.run(tf.local_variables_initializer())
-                    result, gt, prediction = sess.run(problem)
-                    print('Resulting loss: ', result)
+                    placeholders = [ op for op in sess.graph.get_operations() if op.type == "Placeholder"]
+                    print('Placeholders:', str(placeholders))
+                    prediction, inputs = sess.run(problem)
+                    
+                    
+                    print('Input: ', str(inputs))
+                    #print('Resulting loss: ', result)
                     print('Add appl mean: ', self.appliance_params[appliance]['mean'])
                     print('Add appl std: ', self.appliance_params[appliance]['std'])
                     print('Before adjusting prediction mean: ', np.mean(prediction))
@@ -213,7 +218,7 @@ class nilm_eval():
 
         pred_overall={}
         gt_overall={}       # ground truth     
-        gt_overall, pred_overall = self.predict(self.test_mains, None, self.sample_period, timezone)
+        gt_overall, pred_overall = self.predict(self.test_mains, self.test_submeters, self.sample_period, timezone)
 
         self.gt_overall=gt_overall
         self.pred_overall=pred_overall
@@ -247,7 +252,7 @@ class nilm_eval():
                 plt.legend()
                 plt.xlabel('Time')
                 plt.ylabel('Power (W)')
-                plt.yscale("log")
+                #plt.yscale("log")
                 plt.savefig('./nilm_results/' + i + '.png')
             plt.show(block=True)
 

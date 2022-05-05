@@ -185,6 +185,7 @@ def _make_nets(variables, config, net_assignments):
   # list of variables.
   name_to_index = dict((v.name.split(":")[0], i)
                        for i, v in enumerate(variables))
+  print(str(name_to_index))
 
   if net_assignments is None:
     if len(config) != 1:
@@ -384,6 +385,7 @@ class MetaOptimizer(object):
       """While loop body. (called in 409)"""
       x_next = list(x)
       state_next = []
+      print('Timestep ', str(t))
 
       with tf.name_scope("fx"):
         scaled_x = [x[k] * scale[k] for k in range(len(scale))]

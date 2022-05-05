@@ -38,8 +38,8 @@ FLAGS = flags.FLAGS
 flags.DEFINE_string("save_path", None, "Path for saved meta-optimizer.")
 
 flags.DEFINE_integer("num_epochs", 10000, "Number of training epochs.")
-flags.DEFINE_integer("evaluation_period", 100, "Evaluation period.") # evaluate every 100 epochs
-flags.DEFINE_integer("evaluation_epochs", 20, "Number of evaluation epochs.")
+flags.DEFINE_integer("evaluation_period", 20, "Evaluation period.") # evaluate every 100 epochs
+flags.DEFINE_integer("evaluation_epochs", 5, "Number of evaluation epochs.")
 flags.DEFINE_integer("num_steps", 100, "Number of optimization steps per epoch.")
 flags.DEFINE_integer("unroll_length", 20, "Meta-optimizer unroll length.") # Default was 20 
 flags.DEFINE_float("learning_rate", 0.001, "Learning rate.")
@@ -47,6 +47,7 @@ flags.DEFINE_boolean("second_derivatives", False, "Use second derivatives.")
 
 flags.DEFINE_string("problem", "mnist", "Type of problem.")
 flags.DEFINE_boolean("save", False, "Whether to save the resulting nilm-model.")
+flags.DEFINE_boolean("load", False, "Whether to continue training saved model.")
 
 flags.DEFINE_boolean("if_scale", False, "")
 flags.DEFINE_float("rd_scale_bound", 3.0, "Bound for random scaling on the main optimizee.")
@@ -56,7 +57,7 @@ flags.DEFINE_integer("min_num_eval", 3, "")
 
 flags.DEFINE_boolean("if_mt", False, "") # enhanced 2: imitation technique
 flags.DEFINE_integer("num_mt", 1, "")
-flags.DEFINE_string("optimizers", "adam", ".") # split by comma
+flags.DEFINE_string("optimizers", "adam,rmsprop", ".") # split by comma
 flags.DEFINE_float("mt_ratio", 0.3, "")
 flags.DEFINE_string("mt_ratios", "0.0 0.1 0.3 0.3 0.3 0.3 0.3 0.3", "") # TODO are those the rations per task?
 flags.DEFINE_integer("k", 1, "")
@@ -123,7 +124,10 @@ def main(_):
         # tf1.14
         for rst in [reset] + reset_mt:
             sess.run(rst)
-
+        
+        if FLAGS.load:
+            optimizer.restore(sess, FLAGS.save_path, 0)
+            
         # Start.
         start_time = timer()
         tf.get_default_graph().finalize()
@@ -242,10 +246,10 @@ def main(_):
                     break
                     
             gt_final = sess.run(gt)
-            print('Final ground truth appliance data has mean of ' + 
+            print('Final ground truth appliance data (length=', gt_final.size, ') has mean of ' + 
                   str(np.mean(gt_final)) + ' and std of ' + str(np.std(gt_final)) + '.')
             pred_final = sess.run(pred)
-            print('Final predicted appliance data has mean of ' + 
+            print('Final predicted appliance data (length=', pred_final.size, ') has mean of ' + 
                   str(np.mean(pred_final)) + ' and std of ' + str(np.std(pred_final)) + '.')
                   
         if FLAGS.save:

@@ -120,9 +120,9 @@ def call_preprocessing(mains_lst, submeters_lst, method, window_size):
         print('Mains min after preprocessing: ', np.min(new_mains), ' \n')
         mains_df_list.append(pd.DataFrame(new_mains))
         
+    appliance_list = []
     if submeters_lst:
         # Appliances don't need to be processed, when evaluating the nilm model
-        appliance_list = []
         app_mean, app_std = _get_mean_and_std(submeters_lst)
         print('Mean in apps data: ', app_mean)
         print('Std in apps data: ', app_std)
@@ -175,20 +175,21 @@ def model(mains=None, appliances=None, appliance_name='default', mains_len=0, op
 #         with tf.Session() as sess:
 #             print('Mains data has mean of ' + np.mean(mains.eval(sess)) + ' and std of ' + np.std(mains.eval(sess)) + '.')
 #             print('Appliance data has mean of ' +  np.mean(appliances.eval(sess)) + ' and std of ' + np.std(appliances.eval(sess)) + '.')
-        
-        indices_t = tf.random_uniform([batch_size], 0, mains_len, tf.int64) #TODO return indices too?
+         #TODO return indices too?
         
         # If no appliances are provided, model is presumably used for prediction, so only return output
         if appliances is not None:
+            indices_t = tf.random_uniform([batch_size], 0, mains_len, tf.int64)
             mains_batch = tf.gather(mains, indices_t, axis = 0)
             print('Shape after gather: ', mains_batch.get_shape())
             output = tf.squeeze(network_seq(mains_batch))
             appl_batch = tf.gather(appliances, indices_t, axis = 0)
             return _mse(targets=appl_batch, outputs=output), appl_batch, output
         else:
+            indices_t = tf.range(mains_len, dtype=tf.int64)
             mains_batch = tf.gather(mains, indices_t, axis = 0)
             output = tf.squeeze(network_seq(mains_batch))
-            return output # TODO is the output not random now? Is that comparable for a prediction?
+            return output, mains_batch # TODO is the output not random now? Is that comparable for a prediction?
         
     def conv_layer(inputs, strides, filter_size, output_channels, padding, name):
         # get size of last layer
@@ -196,16 +197,15 @@ def model(mains=None, appliances=None, appliance_name='default', mains_len=0, op
         with tf.variable_scope(name, reuse=tf.AUTO_REUSE) as scope:
             if load:
                 # init random weights
-                kernel1 = tf.get_variable('weights',
+                kernel1 = tf.Variable(name='weights',
                                           dtype=tf.float32,
-                                          initializer=tf.constant(np.load('./nilm_models/eval/'
+                                          initial_value=tf.constant(np.load('./nilm_models/eval/'
                                                                           + optimizer + '/'
-                                                                          + name + '-weights.npy'))
-                                          )
-
+                                                                          + name + '-weights.npy')))
                 # init bias
-                biases1 = tf.get_variable('biases', 
-                                          initializer=tf.constant(np.load('./nilm_models/eval/'
+                biases1 = tf.Variable(name='biases', 
+                                           dtype=tf.float32,
+                                          initial_value=tf.constant(np.load('./nilm_models/eval/'
                                                                           + optimizer + '/'
                                                                           + name + '-biases.npy')))
             else:
@@ -213,11 +213,11 @@ def model(mains=None, appliances=None, appliance_name='default', mains_len=0, op
                 kernel1 = tf.get_variable('weights',
                                           shape=[filter_size, n_channels, output_channels],
                                           dtype=tf.float32,
-                                          initializer=tf.random_normal_initializer(stddev=0.01)
-                                          )
+                                          initializer=tf.random_normal_initializer(stddev=0.01))
                 print('Weights for ', name, ': ', str(kernel1))
                 # init bias
                 biases1 = tf.get_variable('biases', [output_channels], 
+                                           dtype=tf.float32,
                                           initializer=tf.constant_initializer(0.0))
         inputs = tf.nn.conv1d(inputs, kernel1, strides, padding)
         inputs = tf.reshape(inputs, [batch_size, -1, output_channels])
@@ -233,16 +233,15 @@ def model(mains=None, appliances=None, appliance_name='default', mains_len=0, op
         with tf.variable_scope(name, reuse=tf.AUTO_REUSE) as scope:
             if load:
                 # init random weights
-                weights = tf.get_variable('weights',
+                weights = tf.Variable(name='weights',
                                           dtype=tf.float32,
-                                          initializer=tf.constant(np.load('./nilm_models/eval/'
+                                          initial_value=tf.constant(np.load('./nilm_models/eval/'
                                                                           + optimizer + '/'
-                                                                          + name + '-weights.npy'))
-                                          )
-
+                                                                          + name + '-weights.npy')))
                 # init bias
-                bias = tf.get_variable('biases', 
-                                          initializer=tf.constant(np.load('./nilm_models/eval/' 
+                bias = tf.Variable(name='biases', 
+                                       dtype=tf.float32,
+                                       initial_value=tf.constant(np.load('./nilm_models/eval/' 
                                                                           + optimizer + '/'
                                                                           + name + '-biases.npy')))
             else:
@@ -267,16 +266,16 @@ def model(mains=None, appliances=None, appliance_name='default', mains_len=0, op
     def network_seq(inputs):
         inputs = tf.reshape(inputs, [batch_size, window_size, -1])
         print('Shape: ', inputs.get_shape())
-        inputs = conv_layer(inputs, strides=1, filter_size=10, output_channels=30, 
+        inputs = conv_layer(inputs, strides=3, filter_size=10, output_channels=30, 
                             padding="VALID", name='conv_1')
         print('Shape: ', inputs.get_shape())
-        inputs = conv_layer(inputs, strides=1, filter_size=8, output_channels=30, 
+        inputs = conv_layer(inputs, strides=3, filter_size=8, output_channels=30, 
                             padding="VALID", name='conv_2')
         print('Shape: ', inputs.get_shape())
-        inputs = conv_layer(inputs, strides=1, filter_size=6, output_channels=40, 
+        inputs = conv_layer(inputs, strides=2, filter_size=6, output_channels=40, 
                             padding="VALID", name='conv_3')
         print('Shape: ', inputs.get_shape())
-        inputs = conv_layer(inputs, strides=1, filter_size=5, output_channels=50, 
+        inputs = conv_layer(inputs, strides=2, filter_size=5, output_channels=50, 
                             padding="VALID", name='conv_4')
         print('Shape: ', inputs.get_shape())
         inputs = tf.nn.dropout(inputs, rate=0.2)
@@ -305,6 +304,12 @@ def model(mains=None, appliances=None, appliance_name='default', mains_len=0, op
     
     def _mse(targets, outputs):
         return tf.reduce_mean((targets - outputs)**2)
+    
+    def _xent_loss(outputs, targets):
+        loss = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=outputs,
+                                                        labels=targets)
+        return tf.reduce_mean(loss)
+
 
 
     return build

@@ -22,6 +22,7 @@ import collections
 import os
 import pdb
 import pickle
+import pandas as pd
 
 from six.moves import xrange
 from tensorflow.contrib.learn.python.learn import monitored_session as ms
@@ -74,7 +75,7 @@ def main(_):
         tf.set_random_seed(FLAGS.seed)
 
     # Problem, NET_CONFIG = predefined conf for META-net, NET_ASSIGNMENTS = None
-    problem, net_config, net_assignments = util.get_config(FLAGS.problem, FLAGS.path)
+    problem, net_config, net_assignments = util.get_config(FLAGS.problem, ['./meta/models/conv.l2l-0', './meta/models/fc.l2l-0'])
     
     print('NET_CONFIG: ', net_config)
 
@@ -89,8 +90,8 @@ def main(_):
         update = optimizer.minimize(cost_op)
         reset = [problem_reset, optimizer_reset]
     elif FLAGS.optimizer == "L2L":
-        if FLAGS.path is None:
-            logging.warning("Evaluating untrained L2L optimizer")
+        #if FLAGS.path is None:
+        #    logging.warning("Evaluating untrained L2L optimizer")
         optimizer = meta.MetaOptimizer(**net_config)
         meta_loss, fx_array, problem_vars, s_final, gt, pred = optimizer.meta_loss(problem, 1, net_assignments=net_assignments)
         _, update, reset, cost_op, _ = meta_loss
@@ -129,6 +130,7 @@ def main(_):
         with open(output_file, 'wb') as l_record:
             pickle.dump(loss_record, l_record)
         print("Saving evaluate loss record {}".format(output_file))
+        
 
         
         gt_final = sess.run(gt)
@@ -137,6 +139,10 @@ def main(_):
         pred_final = sess.run(pred)
         print('Final predicted appliance data has mean of ' + 
               str(np.mean(pred_final)) + ' and std of ' + str(np.std(pred_final)) + '.')
+        
+        result_df = pd.DataFrame({'gt': gt_final, 'pred': pred_final})
+        result_df.head(20)
+        result_df.to_csv('./meta/results/adam_test.csv')
         
         if FLAGS.save:
             print('VAR_X: ', type(problem_vars))

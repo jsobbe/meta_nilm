@@ -11,7 +11,7 @@ DATASETS_EVAL = {'redd':{
 DATASETS_TEST = {'redd':{
     'path': './data/redd.h5',
     'buildings': {
-        1: {'start_time': '2011-05-11', 'end_time': '2011-05-28'}
+        1: {'start_time': '2011-05-11', 'end_time': '2011-05-12'}
     }}}
 POWER = {'mains': ['apparent'], 'appliance': ['active']}
 APPLIANCES = ['fridge']
