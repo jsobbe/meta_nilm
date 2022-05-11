@@ -143,11 +143,11 @@ class nilm_eval():
                     problem = nilm_seq2point.model(mode='nilm_test', mains=mains_t, mains_len=mains_len, load=True, optimizer=optimizer, appliance_name=appliance, batch_size=mains_len)()
                     sess.run(tf.global_variables_initializer())
                     sess.run(tf.local_variables_initializer())
+                    
                     placeholders = [ op for op in sess.graph.get_operations() if op.type == "Placeholder"]
                     print('Placeholders:', str(placeholders))
+                    
                     prediction, inputs = sess.run(problem)
-                    
-                    
                     print('Input: ', str(inputs))
                     #print('Resulting loss: ', result)
                     print('Add appl mean: ', self.appliance_params[appliance]['mean'])

@@ -31,7 +31,6 @@ from tensorflow.python.framework import ops
 from tensorflow.python.util import nest
 
 import networks
-import numpy
 import pandas as pd
 
 
@@ -306,8 +305,6 @@ class MetaOptimizer(object):
     nets, net_keys, subsets = _make_nets(optimizee_vars, self._config, net_assignments)
     # Store the networks so we can save them later.
     self._nets = nets
-    self.truth = tf.TensorArray(tf.float32, size=len_unroll)
-    self.prediction = tf.TensorArray(tf.float32, size=len_unroll)
 
     # Create hidden state for each subset of variables.
     state = []
@@ -361,8 +358,8 @@ class MetaOptimizer(object):
       with tf.name_scope("t_next"):
         t_next = t + 1
 
-      self.truth.write(t, truth) 
-      self.prediction.write(t, prediction) 
+      #self.truth.write(t, truth) 
+      #self.prediction.write(t, prediction) 
       return t_next, fx_array, x_next, state_next
 
     # Define the while loop.

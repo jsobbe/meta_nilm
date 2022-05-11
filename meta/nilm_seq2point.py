@@ -154,7 +154,6 @@ def _get_mean_and_std(mains):
 
 def model(mains=None, appliances=None, appliance_name='default', mains_len=0, optimizer="L2L", mode="train", load=False, batch_size=nilm_config.BATCH_SIZE):
     
-#     models = OrderedDict()
     file_prefix = "{}-temp-weights".format("nilm-seq")
     window_size = nilm_config.WINDOW_SIZE
     batch_norm = nilm_config.BATCH_NORM
@@ -189,7 +188,7 @@ def model(mains=None, appliances=None, appliance_name='default', mains_len=0, op
             indices_t = tf.range(mains_len, dtype=tf.int64)
             mains_batch = tf.gather(mains, indices_t, axis = 0)
             output = tf.squeeze(network_seq(mains_batch))
-            return output, mains_batch # TODO is the output not random now? Is that comparable for a prediction?
+            return output, mains_batch
         
     def conv_layer(inputs, strides, filter_size, output_channels, padding, name):
         # get size of last layer
@@ -219,11 +218,11 @@ def model(mains=None, appliances=None, appliance_name='default', mains_len=0, op
                 biases1 = tf.get_variable('biases', [output_channels], 
                                            dtype=tf.float32,
                                           initializer=tf.constant_initializer(0.0))
-        inputs = tf.nn.conv1d(inputs, kernel1, strides, padding)
-        inputs = tf.reshape(inputs, [batch_size, -1, output_channels])
-        inputs = tf.nn.bias_add(inputs, biases1)
-        if batch_norm:
-            inputs = tf.layers.batch_normalization(inputs, training=mode=='train')# TODO necessary?
+            inputs = tf.nn.conv1d(inputs, kernel1, strides, padding)
+            inputs = tf.reshape(inputs, [batch_size, -1, output_channels])
+            inputs = tf.nn.bias_add(inputs, biases1)
+            if batch_norm:
+                inputs = tf.layers.batch_normalization(inputs, training=mode=='train')# TODO necessary?
         inputs = tf.nn.relu(inputs)
         return inputs
         
@@ -265,35 +264,23 @@ def model(mains=None, appliances=None, appliance_name='default', mains_len=0, op
     # TODO rework based on paper and nilm implementation
     def network_seq(inputs):
         inputs = tf.reshape(inputs, [batch_size, window_size, -1])
-        print('Shape: ', inputs.get_shape())
         inputs = conv_layer(inputs, strides=3, filter_size=10, output_channels=30, 
                             padding="VALID", name='conv_1')
-        print('Shape: ', inputs.get_shape())
         inputs = conv_layer(inputs, strides=3, filter_size=8, output_channels=30, 
                             padding="VALID", name='conv_2')
-        print('Shape: ', inputs.get_shape())
         inputs = conv_layer(inputs, strides=2, filter_size=6, output_channels=40, 
                             padding="VALID", name='conv_3')
-        print('Shape: ', inputs.get_shape())
         inputs = conv_layer(inputs, strides=2, filter_size=5, output_channels=50, 
                             padding="VALID", name='conv_4')
-        print('Shape: ', inputs.get_shape())
         inputs = tf.nn.dropout(inputs, rate=0.2)
         inputs = conv_layer(inputs, strides=1, filter_size=5, output_channels=50, 
                             padding="VALID", name='conv_5')
-        print('Shape post conv: ', inputs.get_shape())
-#         print(str(inputs.get_shape().as_list()))
         inputs = tf.nn.dropout(inputs, rate=0.2)
         inputs = tf.reshape(inputs, [batch_size, -1])
-        print('Shape post flatten: ', inputs.get_shape())
-#         inputs = tf.layers.Flatten()(inputs)
-#         inputs = tf.layers.dense(inputs=inputs, units=1024, activation=tf.nn.relu)
-        inputs = dense_layer(inputs, 1024, 'dense_1', relu=True)
-        print('Shape: ', inputs.get_shape())
+        inputs = dense_layer(inputs, 512, 'dense_1', relu=True)
         inputs = tf.nn.dropout(inputs, rate=0.2)
-#         inputs = tf.layers.dense(inputs=inputs, units=1)
-        inputs = dense_layer(inputs, 1, 'dense_2') # TODO final layer should be linear? How?
-        print('Shape post dense: ', inputs.get_shape(), ' \n')
+        inputs = dense_layer(inputs, 1, 'dense_2')
+        #print('Shape post dense: ', inputs.get_shape(), ' \n')
         return inputs
     
     def _mae(targets, outputs):

@@ -38,8 +38,8 @@ FLAGS = flags.FLAGS
 flags.DEFINE_string("save_path", None, "Path for saved meta-optimizer.")
 
 flags.DEFINE_integer("num_epochs", 10000, "Number of training epochs.")
-flags.DEFINE_integer("evaluation_period", 20, "Evaluation period.") # evaluate every 100 epochs
-flags.DEFINE_integer("evaluation_epochs", 5, "Number of evaluation epochs.")
+flags.DEFINE_integer("evaluation_period", 100, "Evaluation period.") # evaluate every 100 epochs
+flags.DEFINE_integer("evaluation_epochs", 10, "Number of evaluation epochs.")
 flags.DEFINE_integer("num_steps", 100, "Number of optimization steps per epoch.")
 flags.DEFINE_integer("unroll_length", 20, "Meta-optimizer unroll length.") # Default was 20 
 flags.DEFINE_float("learning_rate", 0.001, "Learning rate.")
@@ -73,6 +73,7 @@ def main(_):
     if FLAGS.if_cl:
         num_steps = [100, 200, 500, 1000, 1500, 2000, 2500, 3000]
         num_unrolls = [int(ns / FLAGS.unroll_length) for ns in num_steps]
+        print('Resulting unrolls for curriculum: ', num_unrolls)
         num_unrolls_eval = num_unrolls[1:]
         curriculum_idx = 0
     else:

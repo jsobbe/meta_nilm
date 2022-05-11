@@ -33,11 +33,13 @@ import preprocess
 
 def factory(net, net_options=(), net_path=None):
   """Network factory."""
+  print('Build meta model: ', str(net))
 
   net_class = getattr(sys.modules[__name__], net)
   net_options = dict(net_options)
 
   if net_path:
+    print('Load meta model from: ', net_path)
     with open(net_path, "rb") as f:
       net_options["initializer"] = pickle.load(f)
 

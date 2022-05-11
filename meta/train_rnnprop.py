@@ -29,6 +29,7 @@ import tensorflow as tf
 
 from data_generator import data_loader
 import meta_rnnprop_train as meta
+import numpy as np
 import util
 
 flags = tf.flags
@@ -37,12 +38,14 @@ FLAGS = flags.FLAGS
 flags.DEFINE_string("save_path", None, "Path for saved meta-optimizer.")
 
 flags.DEFINE_integer("num_epochs", 10000, "Number of training epochs.")
-flags.DEFINE_integer("evaluation_period", 10, "Evaluation period.")
-flags.DEFINE_integer("evaluation_epochs", 20, "Number of evaluation epochs.")
+flags.DEFINE_integer("evaluation_period", 50, "Evaluation period.")
+flags.DEFINE_integer("evaluation_epochs", 10, "Number of evaluation epochs.")
 flags.DEFINE_integer("num_steps", 100, "Number of optimization steps per epoch.")
 flags.DEFINE_integer("unroll_length", 20, "Meta-optimizer unroll length.")
 flags.DEFINE_float("learning_rate", 0.001, "Learning rate.")
 flags.DEFINE_boolean("second_derivatives", False, "Use second derivatives.")
+flags.DEFINE_boolean("save", False, "Whether to save the resulting nilm-model.")
+flags.DEFINE_boolean("load", False, "Whether to continue training saved model.") 
 
 flags.DEFINE_float("beta1", 0.95, "")
 flags.DEFINE_float("beta2", 0.95, "")
@@ -64,6 +67,11 @@ flags.DEFINE_integer("k", 1, "")
 
 
 def main(_):
+    np.set_printoptions(precision=3)
+    
+    if FLAGS.unroll_length > FLAGS.num_steps:
+        raise ValueError('Unroll length larger than steps!')
+        
     # Configuration.
     if FLAGS.if_cl:
         num_steps = [100, 200, 500, 1000, 1500, 2000, 2500, 3000]
@@ -79,12 +87,12 @@ def main(_):
             os.mkdir(FLAGS.save_path)
 
     # Problem.
-    problem, net_config, net_assignments = util.get_config(FLAGS.problem, net_name="RNNprop")
+    problem, net_config, net_assignments = util.get_config(FLAGS.problem, net_name="rnn")
 
     # Optimizer setup.
     optimizer = meta.MetaOptimizer(FLAGS.num_mt, FLAGS.beta1, FLAGS.beta2, **net_config)
     minimize, scale, var_x, constants, subsets, seq_step, \
-        loss_mt, steps_mt, update_mt, reset_mt, mt_labels, mt_inputs = optimizer.meta_minimize(
+        loss_mt, steps_mt, update_mt, reset_mt, mt_labels, mt_inputs, gt, pred = optimizer.meta_minimize(
             problem, FLAGS.unroll_length,
             learning_rate=FLAGS.learning_rate,
             net_assignments=net_assignments,
@@ -235,6 +243,22 @@ def main(_):
                 elif num_eval >= FLAGS.min_num_eval and not improved:
                     print ("no improve during curriculum {} --> stop".format(curriculum_idx))
                     break
+                    
+            #gt_final = sess.run(gt)
+            #print('Final ground truth appliance data (length=', gt_final.size, ') has mean of ' + 
+            #      str(np.mean(gt_final)) + ' and std of ' + str(np.std(gt_final)) + '.')
+            #pred_final = sess.run(pred)
+            #print('Final predicted appliance data (length=', pred_final.size, ') has mean of ' + 
+            #      str(np.mean(pred_final)) + ' and std of ' + str(np.std(pred_final)) + '.')
+                  
+        if FLAGS.save:
+            print('VAR_X: ', type(var_x))
+            for i in range(len(var_x)):
+                v = sess.run(var_x[i])
+                print('SAVE VAR: ', str(v))
+                np.save('./nilm_models/' + var_x[i].op.name.replace('/', '-'), v)
+#             v.numpy().save('./models/nilm_model_weights.npy')
+#         tf.train.Saver().save(sess, './modesl/nilm_model')
 
         print ("total time = {}s...".format(timer() - start_time))
 

@@ -32,6 +32,7 @@ from tensorflow.python.framework import ops
 from tensorflow.python.util import nest
 
 import networks
+import numpy as np 
 
 
 def _nested_assign(ref, value):
@@ -157,8 +158,8 @@ def _make_with_custom_variables(func, variables):
   return _wrap_variable_creation(func, custom_getter)
 
 
-MetaLoss = collections.namedtuple("MetaLoss", "loss, update, reset, fx, x")
-MetaStep = collections.namedtuple("MetaStep", "step, update, reset, fx, x")
+MetaLoss = collections.namedtuple("MetaLoss", "loss, update, reset, fx, optimizee_vars")
+MetaStep = collections.namedtuple("MetaStep", "step, update, reset, fx, optimizee_vars")
 
 
 def _make_nets(variables, config, net_assignments):
@@ -327,22 +328,22 @@ class MetaOptimizer(object):
     # loss will never be evaluated.
     # pdb.set_trace()
     
-    x, constants = _get_variables(make_loss)
+    optimizee_vars, constants = _get_variables(make_loss)
 
     print("Optimizee variables")
-    print([op.name for op in x])
+    print([op.name for op in optimizee_vars])
     print("Problem variables")
     print([op.name for op in constants])
 
     # create scale placeholder here
     scale = []
-    for k in x:
+    for k in optimizee_vars:
       scale.append(tf.placeholder_with_default(tf.ones(shape=k.shape), shape=k.shape, name=k.name[:-2] + "_scale"))
     step = tf.placeholder(shape=(), name="step", dtype=tf.int32)
 
     # Create the optimizer networks and find the subsets of variables to assign
     # to each optimizer.
-    nets, net_keys, subsets = _make_nets(x, self._config, net_assignments)
+    nets, net_keys, subsets = _make_nets(optimizee_vars, self._config, net_assignments)
     print('nets', nets)
     print('subsets', subsets)
     # Store the networks so we can save them later.
@@ -355,7 +356,7 @@ class MetaOptimizer(object):
         net = nets[key]
         with tf.name_scope("state_{}".format(i)):
           state.append(_nested_variable(
-              [net.initial_state_for_inputs(x[j], dtype=tf.float32)
+              [net.initial_state_for_inputs(optimizee_vars[j], dtype=tf.float32)
                for j in subset],
               name="state", trainable=False))
 
@@ -363,8 +364,8 @@ class MetaOptimizer(object):
     state_mt = []
     state_vt = []
     for i, (subset, key) in enumerate(zip(subsets, net_keys)):
-      mt = [tf.Variable(tf.zeros(shape=x[j].shape), name=x[j].name[:-2] + "_mt", dtype=tf.float32, trainable=False) for j in subset]
-      vt = [tf.Variable(tf.zeros(shape=x[j].shape), name=x[j].name[:-2] + "_vt", dtype=tf.float32, trainable=False) for j in subset]
+      mt = [tf.Variable(tf.zeros(shape=optimizee_vars[j].shape), name=optimizee_vars[j].name[:-2] + "_mt", dtype=tf.float32, trainable=False) for j in subset]
+      vt = [tf.Variable(tf.zeros(shape=optimizee_vars[j].shape), name=optimizee_vars[j].name[:-2] + "_vt", dtype=tf.float32, trainable=False) for j in subset]
       state_mt.append(mt)
       state_vt.append(vt)
 
@@ -403,7 +404,7 @@ class MetaOptimizer(object):
 
       with tf.name_scope("fx"):
         scaled_x = [x[k] * scale[k] for k in range(len(scale))]
-        fx = _make_with_custom_variables(make_loss, scaled_x)
+        fx, _, _ = _make_with_custom_variables(make_loss, scaled_x)
         fx_array = fx_array.write(t, fx)
 
       with tf.name_scope("dx"):
@@ -428,14 +429,14 @@ class MetaOptimizer(object):
     _, fx_array, x_final, s_final, mt_final, vt_final = tf.while_loop(
         cond=lambda t, *_: t < len_unroll,
         body=time_step,
-        loop_vars=(0, fx_array, x, state, state_mt, state_vt),
+        loop_vars=(0, fx_array, optimizee_vars, state, state_mt, state_vt),
         parallel_iterations=1,
         swap_memory=True,
         name="unroll")
 
     with tf.name_scope("fx"):
       scaled_x_final = [x_final[k] * scale[k] for k in range(len(scale))]
-      fx_final = _make_with_custom_variables(make_loss, scaled_x_final)
+      fx_final, gt, pred = _make_with_custom_variables(make_loss, scaled_x_final)
       fx_array = fx_array.write(len_unroll, fx_final)
 
     loss = tf.reduce_sum(fx_array.stack(), name="loss")
@@ -443,7 +444,7 @@ class MetaOptimizer(object):
     # Reset the state; should be called at the beginning of an epoch.
     with tf.name_scope("reset"):
       variables = (nest.flatten(state) +
-                   x + constants)
+                   optimizee_vars  + constants)
       reset_mt = [tf.assign(m, tf.zeros(shape=m.shape)) for mt in state_mt for m in mt]
       reset_vt = [tf.assign(v, tf.zeros(shape=v.shape)) for vt in state_vt for v in vt]
 
@@ -453,7 +454,7 @@ class MetaOptimizer(object):
     # Operator to update the parameters and the RNN state after our loop, but
     # during an epoch.
     with tf.name_scope("update"):
-      update = (nest.flatten(_nested_assign(x, x_final)) +
+      update = (nest.flatten(_nested_assign(optimizee_vars, x_final)) +
                 nest.flatten(_nested_assign(state, s_final)) +
                 nest.flatten(_nested_assign(state_mt, mt_final)) +
                 nest.flatten(_nested_assign(state_vt, vt_final)))
@@ -463,7 +464,7 @@ class MetaOptimizer(object):
       print("Optimizer '{}' variables".format(k))
       print([op for op in snt.get_variables_in_module(net)])
 
-    return MetaLoss(loss, update, reset, fx_final, x_final), scale, x, step
+    return MetaLoss(loss, update, reset, fx_final, x_final), scale, optimizee_vars, step, gt, pred
 
   def meta_minimize(self, make_loss, len_unroll, learning_rate=0.01, **kwargs):
     """Returns an operator minimizing the meta-loss.
@@ -478,8 +479,8 @@ class MetaOptimizer(object):
     Returns:
       namedtuple containing (step, update, reset, fx, x), ...
     """
-    info, scale, x, seq_step = self.meta_loss(make_loss, len_unroll, **kwargs)
+    info, scale, optimizee_vars, seq_step, gt, pred = self.meta_loss(make_loss, len_unroll, **kwargs)
     optimizer = tf.train.AdamOptimizer(learning_rate)
     step = optimizer.minimize(info.loss)
     self.restorer()
-    return MetaStep(step, *info[1:]), scale, x, seq_step
+    return MetaStep(step, *info[1:]), scale, optimizee_vars, seq_step, gt, pred

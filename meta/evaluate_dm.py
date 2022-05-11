@@ -28,16 +28,18 @@ from six.moves import xrange
 from tensorflow.contrib.learn.python.learn import monitored_session as ms
 import tensorflow as tf
 
-import meta
+import meta_dm_eval as meta
+import nilm_config
 import util
 import numpy as np
+import matplotlib.pyplot as plt
 
 from eval_nilm import nilm_eval
 
 flags = tf.flags
 FLAGS = flags.FLAGS
 
-flags.DEFINE_string("optimizer", "L2L", "Optimizer.")
+flags.DEFINE_string("optimizer", "dm", "Optimizer.")
 flags.DEFINE_string("problem", "simple", "Type of problem.")
 
 flags.DEFINE_string("path", None, "Path to saved meta-optimizer network.")
@@ -48,23 +50,6 @@ flags.DEFINE_integer("num_epochs", 1, "Number of evaluation epochs.")
 flags.DEFINE_integer("num_steps", 10000, "Number of optimization steps per epoch.")
 flags.DEFINE_float("learning_rate", 0.001, "Learning rate.")
 flags.DEFINE_integer("seed", None, "Seed for TensorFlow's RNG.")
-
-variable_names = {
-    0: 'conv_1-weights',
-    1: 'conv_1-biases',
-    2: 'conv_2-weights',
-    3: 'conv_2-biases',
-    4: 'conv_3-weights',
-    5: 'conv_3-biases',
-    6: 'conv_4-weights',
-    7: 'conv_4-biases',
-    8: 'conv_5-weights',
-    9: 'conv_5-biases',
-    10: 'dense_1-weights',
-    11: 'dense_1-biases',
-    12: 'dense_2-weights',
-    13: 'dense_2-biases'
-}
 
 
 def main(_):
@@ -80,7 +65,7 @@ def main(_):
     print('NET_CONFIG: ', net_config)
 
     # Optimizer setup.
-    if FLAGS.optimizer == "Adam":
+    if FLAGS.optimizer == "adam":
         cost_op, gt, pred = problem()
         problem_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)
         problem_reset = tf.variables_initializer(problem_vars)
@@ -89,7 +74,7 @@ def main(_):
         optimizer_reset = tf.variables_initializer(optimizer.get_slot_names())
         update = optimizer.minimize(cost_op)
         reset = [problem_reset, optimizer_reset]
-    elif FLAGS.optimizer == "L2L":
+    elif FLAGS.optimizer == "dm":
         #if FLAGS.path is None:
         #    logging.warning("Evaluating untrained L2L optimizer")
         optimizer = meta.MetaOptimizer(**net_config)
@@ -131,6 +116,13 @@ def main(_):
             pickle.dump(loss_record, l_record)
         print("Saving evaluate loss record {}".format(output_file))
         
+        plt.figure()
+        plt.plot(loss_record,label=FLAGS.optimizer)
+        plt.legend()
+        plt.xlabel('Steps')
+        plt.ylabel('Training Loss')
+        plt.yscale("log")
+        plt.savefig('./meta/results/' + FLAGS.optimizer + '.png')
 
         
         gt_final = sess.run(gt)
@@ -150,9 +142,10 @@ def main(_):
             print('VAR_X content: ', str(problem_vars))
             count = 0
             for i in range(len(problem_vars)):
-                if not problem_vars[i].name.startswith('batch_norm'):
+                print(problem_vars[i].name, ': ', count, ' => ', nilm_config.NILM_VARS[count])
+                if not 'batch_norm' in problem_vars[i].name:
                     v = sess.run(problem_vars[i])
-                    np.save('./nilm_models/eval/' + FLAGS.optimizer + '/' + variable_names[count], v)
+                    np.save('./nilm_models/eval/' + FLAGS.optimizer + '/' + nilm_config.NILM_VARS[count], v)
                     count += 1
     
 

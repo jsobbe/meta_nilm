@@ -232,7 +232,7 @@ class MetaOptimizer(object):
 
     Args:
       **kwargs: A set of keyword arguments mapping network identifiers (the
-          keys) to parameters that will be passed to networks.Factory (see docs
+          keys) to parameters that will be passed to networks. Factory (see docs
           for more info).  These can be used to assign different optimizee
           parameters to different optimizers (see net_assignments in the
           meta_loss method).
@@ -403,7 +403,7 @@ class MetaOptimizer(object):
 
       with tf.name_scope("fx"):
         scaled_x = [x[k] * scale[k] for k in range(len(scale))]
-        fx = _make_with_custom_variables(make_loss, scaled_x)
+        fx, _, _ = _make_with_custom_variables(make_loss, scaled_x)
         fx_array = fx_array.write(t, fx)
 
       with tf.name_scope("dx"):
@@ -435,7 +435,7 @@ class MetaOptimizer(object):
 
     with tf.name_scope("fx"):
       scaled_x_final = [x_final[k] * scale[k] for k in range(len(scale))]
-      fx_final = _make_with_custom_variables(make_loss, scaled_x_final)
+      fx_final, gt, pred = _make_with_custom_variables(make_loss, scaled_x_final)
       fx_array = fx_array.write(len_unroll, fx_final)
 
     loss = tf.reduce_sum(fx_array.stack(), name="loss")
@@ -590,7 +590,7 @@ class MetaOptimizer(object):
       print([op for op in snt.get_variables_in_module(net)])
 
     return MetaLoss(loss, update, reset, fx_final, x_final), scale, x, constants, subsets, step, \
-           loss_mt, update_mt, reset_multitask, mt_labels, mt_inputs
+           loss_mt, update_mt, reset_multitask, mt_labels, mt_inputs, gt, pred
 
   def meta_minimize(self, make_loss, len_unroll, learning_rate=0.01, **kwargs):
     """Returns an operator minimizing the meta-loss.
@@ -606,7 +606,7 @@ class MetaOptimizer(object):
       namedtuple containing (step, update, reset, fx, x), ...
     """
 
-    info, scale, x, constants, subsets, seq_step, loss_mt, update_mt, reset_multitask, mt_labels, mt_inputs = \
+    info, scale, x, constants, subsets, seq_step, loss_mt, update_mt, reset_multitask, mt_labels, mt_inputs, gt, pred = \
         self.meta_loss(make_loss, len_unroll, **kwargs)
     optimizer = tf.train.AdamOptimizer(learning_rate)
     step = optimizer.minimize(info.loss)
@@ -621,4 +621,4 @@ class MetaOptimizer(object):
     self.restorer()
 
     return MetaStep(step, *info[1:]), scale, x, constants, subsets, seq_step, \
-           loss_mt, steps_mt, update_mt, reset_multitask, mt_labels, mt_inputs
+           loss_mt, steps_mt, update_mt, reset_multitask, mt_labels, mt_inputs, gt, pred
