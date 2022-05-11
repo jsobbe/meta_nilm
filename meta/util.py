@@ -114,18 +114,6 @@ def print_stats(header, total_error, total_time, n):
   print("Mean epoch time: {:.2f} s".format(total_time / n))
 
 
-def get_default_net_config(path):
-  return {
-      "net": "CoordinateWiseDeepLSTM",
-      "net_options": {
-          "layers": (20, 20),
-          "preprocess_name": "LogAndSign",
-          "preprocess_options": {"k": 5},
-          "scale": 0.01,
-      },
-      "net_path": path
-  }
-
 def _prepare_nilm_data(mode="train"):
     if mode is "train":
         data=nilm_config.DATASETS_TRAIN
@@ -164,121 +152,9 @@ def _prepare_nilm_data(mode="train"):
     return mains_t, appl_t, mains_len
 
 
-def get_config(problem_name, path=None, mode=None, num_hidden_layer=None, net_name=None):
-  """Returns problem configuration."""
-
-# ----------------------- RELEVANT -------------------------
-  if problem_name == "nilm_seq": 
-    
-    
-    if mode is None:
-        mode = "train" if path is None else "test"
-    mains, appls, mains_len = _prepare_nilm_data(mode)
-    
-    problem = nilm_seq2point.model(mode=mode, mains=mains, appliances=appls, mains_len=mains_len, appliance_name='fridge') # TODO get from somewhere else
-    
-    c_path = None
-    d_path = None
-    if path:
-        c_path = path[0]
-        d_path = path[1]
-        
-    net_config = {
-        "conv": get_default_net_config(c_path),
-        "fc": get_default_net_config(d_path)
-    }
-    conv_vars = ["conv_{}/weights".format(i) for i in xrange(1, 6)]
-    conv_vars += ["conv_{}/biases".format(i) for i in xrange(1, 6)]
-    #conv_vars += ["conv_batch_norm_{}/beta".format(i) for i in xrange(5)]
-    fc_vars = ["dense_{}/weights".format(i) for i in xrange(1, 3)]
-    fc_vars += ["dense_{}/biases".format(i) for i in xrange(1, 3)]
-    #fc_vars += ["mlp/batch_norm/beta"]
-    net_assignments = [("conv", conv_vars), ("fc", fc_vars)]
-# ----------------------- RELEVANT -------------------------
-
-  elif problem_name == "cifar_conv":
-    if mode is None:
-        mode = "train" if path is None else "test"
-    problem = problems.cifar10("cifar10", mode=mode)
-    net_config = {"cw": get_default_net_config(path)}
-    net_assignments = None
-  elif problem_name == "lenet":
-    if mode is None:
-        mode = "train" if path is None else "test"
-    problem = problems.LeNet("cifar10",
-                             conv_channels=(6, 16),
-                             linear_layers=(120, 84),
-                             mode=mode)
-    net_config = {"cw": get_default_net_config(path)}
-    net_assignments = None
-  elif problem_name == "nas":
-    if mode is None:
-        mode = "train" if path is None else "test"
-    problem = problems.NAS("cifar10", mode=mode)
-    net_config = {"cw": get_default_net_config(path)}
-    net_assignments = None
-  ###
-  elif problem_name == "vgg16":
-    mode = "train" if path is None else "test"
-    problem = problems.vgg16_cifar10("cifar10",
-                               mode=mode)
-    net_config = {"cw": get_default_net_config(path)}
-    net_assignments = None
-  elif problem_name == "cifar-multi":
-    mode = "train" if path is None else "test"
-    problem = problems.cifar10("cifar10",
-                               conv_channels=(16, 16, 16),
-                               linear_layers=(32,),
-                               mode=mode)
-    net_config = {
-        "conv": get_default_net_config(path),
-        "fc": get_default_net_config(path)
-    }
-    conv_vars = ["conv_net_2d/conv_2d_{}/w".format(i) for i in xrange(3)]
-    fc_vars = ["conv_net_2d/conv_2d_{}/b".format(i) for i in xrange(3)]
-    fc_vars += ["conv_net_2d/batch_norm_{}/beta".format(i) for i in xrange(3)]
-    fc_vars += ["mlp/linear_{}/w".format(i) for i in xrange(2)]
-    fc_vars += ["mlp/linear_{}/b".format(i) for i in xrange(2)]
-    fc_vars += ["mlp/batch_norm/beta"]
-    net_assignments = [("conv", conv_vars), ("fc", fc_vars)]
-#   elif problem_name == "confocal_microscopy_3d":
-#     problem = problems.confocal_microscopy_3d(batch_size=32, num_points=5)
-#     net_config = {"cw": {
-#         "net": "CoordinateWiseDeepLSTM",
-#         "net_options": {"layers": (20, 20)},
-#         "net_path": path
-#     }}
-#     net_assignments = None
-#   elif problem_name == "square_cos":
-#     problem = problems.square_cos(batch_size=128, num_dims=2)
-#     net_config = {"cw": {
-#         "net": "CoordinateWiseDeepLSTM",
-#         "net_options": {"layers": (20, 20)},
-#         "net_path": path
-#     }}
-#     net_assignments = None
-#   elif problem_name == "rastrigin":
-#     problem = problems.rastrigin(batch_size=128, num_dims=2)
-#     net_config = {"cw": {
-#         "net": "CoordinateWiseDeepLSTM",
-#         "net_options": {"layers": (20, 20)},
-#         "net_path": path
-#     }}
-#     net_assignments = None
-#   elif problem_name == "lasso":
-#     problem = problems.lasso(batch_size=128, num_dims=2)
-#     net_config = {"cw": {
-#         "net": "CoordinateWiseDeepLSTM",
-#         "net_options": {"layers": (20, 20)},
-#         "net_path": path
-#     }}
-#     net_assignments = None
-  
-  else:
-    raise ValueError("{} is not a valid problem".format(problem_name))
-
-  if net_name == "RNNprop":
-      default_config = {
+def _get_default_net_config(path, net_name):
+    if net_name == "rnn":
+        return {
               "net": "RNNprop",
               "net_options": {
                   "layers": (20, 20),
@@ -289,6 +165,67 @@ def get_config(problem_name, path=None, mode=None, num_hidden_layer=None, net_na
               },
               "net_path": path
           }
-      net_config = {"rp": default_config}
+    else:
+        return {
+            "net": "CoordinateWiseDeepLSTM",
+            "net_options": {
+                "layers": (20, 20),
+                "preprocess_name": "LogAndSign",
+                "preprocess_options": {"k": 5},
+                "scale": 0.01,
+            },
+            "net_path": path
+        }
+
+def _get_default_net(path, net_name):
+    net_config = {
+        "rp" if net_name == "rnn" else "cw": _get_default_net_config(path, net_name)
+    }
+    return net_config, None
+
+def _get_net_per_layer_type(path, net_name):
+    c_path = None
+    d_path = None
+    if path:
+        c_path = path[0]
+        d_path = path[1]
+    net_config = {
+        "conv": _get_default_net_config(c_path, net_name),
+        "fc": _get_default_net_config(d_path, net_name)
+    }
+    conv_vars = ["conv_{}/weights".format(i) for i in xrange(1, 4)]
+    conv_vars += ["conv_{}/biases".format(i) for i in xrange(1, 4)]
+    #conv_vars += ["conv_batch_norm_{}/beta".format(i) for i in xrange(5)]
+    fc_vars = ["dense_{}/weights".format(i) for i in xrange(1, 3)]
+    fc_vars += ["dense_{}/biases".format(i) for i in xrange(1, 3)]
+    #fc_vars += ["mlp/batch_norm/beta"]
+    net_assignments = [("conv", conv_vars), ("fc", fc_vars)]
+    return net_config, net_assignments
+    
+
+
+def get_config(problem_name, path=None, mode=None, net_name=None):
+  """Returns problem configuration."""
+  shared_net = True if net_name == 'rnn' else nilm_config.SHARED_NET
+  print('Load config for path ', path, ', net name ', net_name)
+# ----------------------- RELEVANT -------------------------
+  if problem_name == "nilm_seq": 
+    
+    if mode is None:
+        mode = "train" if path is None else "test"
+    mains, appls, mains_len = _prepare_nilm_data(mode)
+    
+    problem = nilm_seq2point.model(mode=mode, mains=mains, appliances=appls, mains_len=mains_len, appliance_name='fridge') # TODO get from somewhere else
+    
+    if shared_net:
+        net_config, net_assignments = _get_default_net(path, net_name)
+    else:
+        net_config, net_assignments = _get_net_per_layer_type(path, net_name)
+        
+# ----------------------- RELEVANT -------------------------
+
+  
+  else:
+    raise ValueError("{} is not a valid problem".format(problem_name))
 
   return problem, net_config, net_assignments
