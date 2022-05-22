@@ -57,7 +57,7 @@ flags.DEFINE_integer("min_num_eval", 3, "")
 
 flags.DEFINE_boolean("if_mt", False, "") # enhanced 2: imitation technique
 flags.DEFINE_integer("num_mt", 1, "")
-flags.DEFINE_string("optimizers", "adam,rmsprop", ".") # split by comma
+flags.DEFINE_string("optimizers", "adam", ".") # split by comma
 flags.DEFINE_float("mt_ratio", 0.3, "")
 flags.DEFINE_string("mt_ratios", "0.0 0.1 0.3 0.3 0.3 0.3 0.3 0.3", "") # TODO are those the rations per task?
 flags.DEFINE_integer("k", 1, "")
