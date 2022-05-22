@@ -1,25 +1,35 @@
+# Files
+META_MODEL_PATH = './meta/models/_meta/'
+NILM_MODEL_PATH = './meta/models/_nilm/'
+OUTPUT_PATH = './meta/results/1_eval/'
+SAVE_MODEL = True
+
 # Experimental setup
-NUM_RUNS = 3
-NUM_EPOCHS = 1
-NUM_STEPS = 250
+NUM_RUNS = 1
+NUM_EPOCHS = 7
+NUM_STEPS = 100
 LEARNING_RATE = 0.001
 
 # META setup
 OPTIMIZERS = {
     'adam':'',
-    'adagrad':'',
-    'momentum':'',
+    #'adagrad':'',
+    #'momentum':'',
     'rmsprop':'',
-    #'dm': ['./meta/models/dm/conv.l2l-0', './meta/models/dm/fc.l2l-0'], 
-    #'dm': './meta/models/dm/cw.l2l-0', 
-    #'dme': ['./meta/models/dme/conv.l2l-0', './meta/models/dme/fc.l2l-0'], 
-    #'rnn': './meta/models/rnn/rp.l2l-0'
+    #'dm': [META_MODEL_PATH + 'dm/conv.l2l-0', META_MODEL_PATH + 'dm/fc.l2l-0'], 
+    #'dm': META_MODEL_PATH + 'dm/cw.l2l-0', 
+    #'dme': [META_MODEL_PATH + 'dme/conv.l2l-0', META_MODEL_PATH + 'dme/fc.l2l-0'], 
+    'rnn': META_MODEL_PATH + 'rnnprop/rp.l2l-0'
 }
 PROBLEM = 'nilm_seq'
+APPLIANCES = [
+    'fridge', 
+    #'washing machine', 
+    #'dish washer',
+    #'oven', 
+    #'microwave'
+]
 
-# Files
-OUTPUT_PATH = './meta/results/'
-SAVE_MODEL = False
 
 # RNNPROP
 BETA_1 = 0.95
