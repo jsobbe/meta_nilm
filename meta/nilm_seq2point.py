@@ -26,7 +26,7 @@ from vgg16 import VGG16
 import tensorflow_probability as tfp
 import matplotlib.pyplot as plt
 
-import nilm_config
+import conf_nilm
 
 tfd = tfp.distributions
 
@@ -35,12 +35,36 @@ _nn_initializers = {
     "b": tf.random_normal_initializer(mean=0, stddev=0.01),
 }
 
+def preprocess_data(mode="train", appliance=None):
+    if mode is "train":
+        data=conf_nilm.DATASETS_TRAIN
+    else:
+        data=conf_nilm.DATASETS_EVAL
+    window_size = conf_nilm.WINDOW_SIZE
+    batch_size = conf_nilm.BATCH_SIZE
+    do_preprocessing = conf_nilm.PREPROCESSING
+    load = False
+    
+    mains, subs = get_mains_and_subs_train(data, appliance)
+    mains, appls = call_preprocessing(mains, subs, window_size)
+    
+    # mains is currently list of df with many windows
+    # Convert list of dataframes to a single tensor
+    mains_list = []
+    for main_df in mains:
+        if not main_df.empty:
+            mains_list.append(main_df.to_numpy())
+
+    appls_list = []
+    for appl_df in appls:
+        appls_list.append(appl_df.to_numpy()) # TODO for more appliances
+    return np.asarray(mains_list).squeeze(), np.asarray(appls_list).squeeze()
 
 def get_mains_and_subs_train(datasets, appliance_name):
-    power = nilm_config.POWER
-    sample_period = nilm_config.SAMPLE_PERIOD
-    drop_nans = nilm_config.DROP_NANS
-    artificial_aggregate = nilm_config.ARTIFICIAL_AGGREGATE
+    power = conf_nilm.POWER
+    sample_period = conf_nilm.SAMPLE_PERIOD
+    drop_nans = conf_nilm.DROP_NANS
+    artificial_aggregate = conf_nilm.ARTIFICIAL_AGGREGATE
     # This function has a few issues, which should be addressed soon
     print("............... Loading Data for training ...................")
     # store the train_main readings for all buildings
@@ -62,6 +86,7 @@ def get_mains_and_subs_train(datasets, appliance_name):
             # TODO does meta expect a different format here with indeces?
 
             # get and append all single appliance dfs
+            print("Loading appliance ... ", appliance_name)
             appliance_df = next(train.buildings[building].elec[appliance_name].load(
                 physical_quantity='power', ac_type=power['appliance'], sample_period=sample_period))
             appliance_df = appliance_df[[list(appliance_df.columns)[0]]] # TODO support for multiple appliances?
@@ -97,7 +122,7 @@ def _dropna(mains_df, appliance_df):
         new_appliances_df = appliance_df.loc[ix]
         return mains_df, new_appliances_df
 
-def call_preprocessing(mains_lst, submeters_lst, method, window_size):
+def call_preprocessing(mains_lst, submeters_lst, window_size):
     print("\n< BEGIN PREPROCESSING >")
     mains_mean, mains_std = _get_mean_and_std(mains_lst)
     print('Mean in mains data: ', mains_mean)
@@ -152,21 +177,25 @@ def _get_mean_and_std(mains):
     return mean, std
 
 
-def model(mains=None, appliances=None, appliance_name='default', mains_len=0, optimizer="L2L", mode="train", load=False, batch_size=nilm_config.BATCH_SIZE):
+def model(appliance='fridge', optimizer="L2L", mode="train", model_path=None, batch_size=conf_nilm.BATCH_SIZE, predict=False):
     
     file_prefix = "{}-temp-weights".format("nilm-seq")
-    window_size = nilm_config.WINDOW_SIZE
-    batch_norm = nilm_config.BATCH_NORM
+    window_size = conf_nilm.WINDOW_SIZE
+    batch_norm = conf_nilm.BATCH_NORM
+    
+    mains = tf.placeholder(tf.float32, shape=(batch_size, window_size))
+    appls = tf.placeholder(tf.float32, shape=(batch_size, 1))
      
 
     """
     Build the whole tf pipeline.
     """
     def build():
+        
         if window_size % 2 == 0:
             print("Sequence length should be odd!")
             raise SequenceLengthError
-        if not load:
+        if not model_path:
             print('Building model for optimizer ', optimizer, ' and mode ', mode)
         else:
             print('Loading model for optimizer ', optimizer, ' and mode ', mode)
@@ -177,36 +206,26 @@ def model(mains=None, appliances=None, appliance_name='default', mains_len=0, op
          #TODO return indices too?
         
         # If no appliances are provided, model is presumably used for prediction, so only return output
-        if appliances is not None:
-            indices_t = tf.random_uniform([batch_size], 0, mains_len, tf.int64)
-            mains_batch = tf.gather(mains, indices_t, axis = 0)
-            print('Shape after gather: ', mains_batch.get_shape())
-            output = tf.squeeze(network_seq(mains_batch))
-            appl_batch = tf.gather(appliances, indices_t, axis = 0)
-            return _mse(targets=appl_batch, outputs=output), appl_batch, output
+        if not predict:
+            output = tf.squeeze(network_seq(mains))
+            return _mse(targets=appls, outputs=output), appls, output
         else:
-            indices_t = tf.range(mains_len, dtype=tf.int64)
-            mains_batch = tf.gather(mains, indices_t, axis = 0)
-            output = tf.squeeze(network_seq(mains_batch))
-            return output, mains_batch
+            output = tf.squeeze(network_seq(mains))
+            return output
         
     def conv_layer(inputs, strides, filter_size, output_channels, padding, name):
         # get size of last layer
         n_channels = int(inputs.get_shape()[-1])
         with tf.variable_scope(name, reuse=tf.AUTO_REUSE) as scope:
-            if load:
+            if model_path:
                 # init random weights
                 kernel1 = tf.Variable(name='weights',
                                           dtype=tf.float32,
-                                          initial_value=tf.constant(np.load('./nilm_models/eval/'
-                                                                          + optimizer + '/'
-                                                                          + name + '-weights.npy')))
+                                          initial_value=tf.constant(np.load(model_path + name + '-weights.npy')))
                 # init bias
                 biases1 = tf.Variable(name='biases', 
                                            dtype=tf.float32,
-                                          initial_value=tf.constant(np.load('./nilm_models/eval/'
-                                                                          + optimizer + '/'
-                                                                          + name + '-biases.npy')))
+                                          initial_value=tf.constant(np.load(model_path + name + '-biases.npy')))
             else:
                 # init random weights
                 kernel1 = tf.get_variable('weights',
@@ -230,19 +249,15 @@ def model(mains=None, appliances=None, appliance_name='default', mains_len=0, op
 #         inputs = tf.reshape(inputs, [units, -1])
         fc_shape2 = int(inputs.get_shape()[-1])
         with tf.variable_scope(name, reuse=tf.AUTO_REUSE) as scope:
-            if load:
+            if model_path:
                 # init random weights
                 weights = tf.Variable(name='weights',
                                           dtype=tf.float32,
-                                          initial_value=tf.constant(np.load('./nilm_models/eval/'
-                                                                          + optimizer + '/'
-                                                                          + name + '-weights.npy')))
+                                          initial_value=tf.constant(np.load(model_path + name + '-weights.npy')))
                 # init bias
                 bias = tf.Variable(name='biases', 
                                        dtype=tf.float32,
-                                       initial_value=tf.constant(np.load('./nilm_models/eval/' 
-                                                                          + optimizer + '/'
-                                                                          + name + '-biases.npy')))
+                                       initial_value=tf.constant(np.load(model_path + name + '-biases.npy')))
             else:
                 weights = tf.get_variable("weights",
                                       shape=[fc_shape2, units],
@@ -299,4 +314,4 @@ def model(mains=None, appliances=None, appliance_name='default', mains_len=0, op
 
 
 
-    return build
+    return build, mains, appls

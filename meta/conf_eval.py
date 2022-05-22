@@ -15,11 +15,11 @@ OPTIMIZERS = {
     'adam':'',
     #'adagrad':'',
     #'momentum':'',
-    'rmsprop':'',
+    #'rmsprop':'',
     #'dm': [META_MODEL_PATH + 'dm/conv.l2l-0', META_MODEL_PATH + 'dm/fc.l2l-0'], 
     #'dm': META_MODEL_PATH + 'dm/cw.l2l-0', 
     #'dme': [META_MODEL_PATH + 'dme/conv.l2l-0', META_MODEL_PATH + 'dme/fc.l2l-0'], 
-    'rnn': META_MODEL_PATH + 'rnnprop/rp.l2l-0'
+    #'rnn': META_MODEL_PATH + 'rnnprop/rp.l2l-0'
 }
 PROBLEM = 'nilm_seq'
 APPLIANCES = [

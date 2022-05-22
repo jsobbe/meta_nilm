@@ -1,5 +1,4 @@
-import util
-import nilm_config
+import conf_nilm
 import nilm_seq2point
 import tensorflow as tf
 
@@ -7,7 +6,6 @@ from nilmtk.dataset import DataSet
 from nilmtk.losses import *
 from nilmtk.metergroup import MeterGroup
 import pandas as pd
-from nilmtk.losses import *
 import numpy as np
 import matplotlib.pyplot as plt
 import datetime
@@ -47,28 +45,28 @@ def _get_appliance_params(train_appliances):
 
 class nilm_eval():
     
-    def __init__(self, problem):
+    def __init__(self):
         np.set_printoptions(precision=3)
     
-        self.metrics = nilm_config.METRICS
-        self.appliances = nilm_config.APPLIANCES
-        self.drop_nans = nilm_config.DROP_NANS
-        self.power = nilm_config.POWER
-        self.appliances = nilm_config.APPLIANCES
-        self.window_size = nilm_config.WINDOW_SIZE
-        self.sample_period = nilm_config.SAMPLE_PERIOD
-        self.batch_size = nilm_config.BATCH_SIZE
-        self.artificial_aggregate = nilm_config.ARTIFICIAL_AGGREGATE
+        self.metrics = conf_nilm.METRICS
+        self.appliances = conf_nilm.APPLIANCES
+        self.drop_nans = conf_nilm.DROP_NANS
+        self.power = conf_nilm.POWER
+        self.appliances = conf_nilm.APPLIANCES
+        self.window_size = conf_nilm.WINDOW_SIZE
+        self.sample_period = conf_nilm.SAMPLE_PERIOD
+        self.batch_size = conf_nilm.BATCH_SIZE
+        self.artificial_aggregate = conf_nilm.ARTIFICIAL_AGGREGATE
         self.test_submeters = []
         self.errors = []
         self.errors_keys = []
-        self.do_preprocessing = nilm_config.PREPROCESSING
-        self.display_predictions = nilm_config.DISPLAY_PRED
-        self.optimizers = nilm_config.OPTIMIZERS
+        self.do_preprocessing = conf_nilm.PREPROCESSING
+        self.display_predictions = conf_nilm.DISPLAY_PRED
+        self.optimizers = conf_nilm.OPTIMIZERS
 
     def test(self):
         # store the test_main readings for all buildings
-        d = nilm_config.DATASETS_TEST
+        d = conf_nilm.DATASETS_TEST
 
         for dataset in d:
             print("Loading data for ",dataset, " dataset")
@@ -123,16 +121,16 @@ class nilm_eval():
         if self.do_preprocessing:
             test_main_list, _ = nilm_seq2point.call_preprocessing(test_elec, submeters_lst=None, method='nilm_test', window_size=self.window_size)
             
-        main_tensors = []
+        mains = []
         mains_len = 0
         for main_df in test_main_list:
             if not main_df.empty:
                 mains_len += len(main_df)
-            main_tensors.append(tf.convert_to_tensor(main_df))
+            mains.append(main_df.to_numpy())
         if mains_len <= 1:
             raise ValueError('No mains data found in provided time frame') 
         print('num of mains:', mains_len)
-        mains_t = tf.squeeze(tf.convert_to_tensor(main_tensors))
+        mains = np.asarray(mains)
 
         test_predictions = []
         disggregation_dict = {}
@@ -140,16 +138,17 @@ class nilm_eval():
             for appliance in self.appliances:
                 print("=========== PREDICTION for | ", appliance, " | ", optimizer, " | =============")
                 with tf.Session() as sess:
-                    problem = nilm_seq2point.model(mode='nilm_test', mains=mains_t, mains_len=mains_len, load=True, optimizer=optimizer, appliance_name=appliance, batch_size=mains_len)()
+                    model_path = conf_nilm.MODEL_PATH + appliance + '/' + optimizer + '/'
+                    
+                    problem, mains_p, _ = nilm_seq2point.model(mode='nilm_test', model_path=model_path, optimizer=optimizer, batch_size=mains_len, predict=True)
+                    result = problem()
                     sess.run(tf.global_variables_initializer())
                     sess.run(tf.local_variables_initializer())
                     
-                    placeholders = [ op for op in sess.graph.get_operations() if op.type == "Placeholder"]
-                    print('Placeholders:', str(placeholders))
+                    #placeholders = [ op for op in sess.graph.get_operations() if op.type == "Placeholder"]
+                    #print('Placeholders:', str(placeholders))
                     
-                    prediction, inputs = sess.run(problem)
-                    print('Input: ', str(inputs))
-                    #print('Resulting loss: ', result)
+                    prediction = sess.run(result, feed_dict={mains_p:mains.squeeze()})
                     print('Add appl mean: ', self.appliance_params[appliance]['mean'])
                     print('Add appl std: ', self.appliance_params[appliance]['std'])
                     print('Before adjusting prediction mean: ', np.mean(prediction))
@@ -203,9 +202,9 @@ class nilm_eval():
     def compute_loss(self,gt,clf_pred, loss_function):
         error = {}
         for app_name in clf_pred.columns:
-            print('APP NAME: , ', app_name)
-            print('GT: , ', gt[app_name.split('_')[-1]])
-            print('PRED: , ', clf_pred[app_name])
+            #print('APP NAME: , ', app_name)
+            #print('GT: , ', gt[app_name.split('_')[-1]])
+            #print('PRED: , ', clf_pred[app_name])
             error[app_name] = loss_function(app_gt=gt[app_name.split('_')[-1]], app_pred=clf_pred[app_name])
         return pd.Series(error)        
 
@@ -243,7 +242,7 @@ class nilm_eval():
 
         if self.display_predictions:
             for i in pred_overall.columns:
-                plt.figure()
+                plt.figure(figsize=(100, 12))
                 #plt.plot(self.test_mains[0],label='Mains reading')
                 plt.plot(gt_overall[i.split('_')[-1]],label='Truth')
                 plt.plot(pred_overall[i],label='Pred')
@@ -253,8 +252,8 @@ class nilm_eval():
                 plt.xlabel('Time')
                 plt.ylabel('Power (W)')
                 #plt.yscale("log")
-                plt.savefig('./nilm_results/' + i + '.png')
+                plt.savefig(conf_nilm.OUTPUT_PATH + i + '.png')
             plt.show(block=True)
 
 if __name__ == "__main__":
-    nilm_eval(None).test()
+    nilm_eval().test()

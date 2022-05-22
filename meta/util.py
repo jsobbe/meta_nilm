@@ -91,14 +91,24 @@ def run_epoch(sess, cost_op, ops, reset, num_unrolls,
   return timer() - start, cost
 
 
-def run_eval_epoch(sess, cost_op, ops, num_unrolls, step=None, unroll_len=None):
+def run_eval_epoch(sess, cost_op, ops, num_unrolls, mains, appls, mains_p, appl_p, step=None, unroll_len=None):
   """Runs one optimization epoch."""
   print('Unrolling evaluation epoch ', num_unrolls, ' times.')
   start = timer()
   # sess.run(reset)
   total_cost = []
   feed_dict = {}
+  
+  
   for i in xrange(num_unrolls):
+    indices = np.expand_dims(np.random.randint(0, high=len(mains), size=conf_nilm.BATCH_SIZE), axis=1)
+    print('INDICES:', str(indices[0]))
+    appl_batch = np.take_along_axis(np.expand_dims(appls, axis=1), indices, axis = 0)
+    print('APPL_BATCH:', str(appl_batch[0]))
+    mains_batch = np.take_along_axis(mains, indices, axis = 0)
+    print('MAINS_BATCH:', str(mains_batch[0]))
+    feed_dict[mains_p] = mains_batch
+    feed_dict[appl_p] = appl_batch
     if step is not None:
         feed_dict[step] = i * unroll_len + 1
     result = sess.run([cost_op] + ops, feed_dict=feed_dict)
@@ -112,43 +122,6 @@ def print_stats(header, total_error, total_time, n):
   print(header)
   print("Log Mean Final Error: {:.2f}".format(np.log10(total_error / n)))
   print("Mean epoch time: {:.2f} s".format(total_time / n))
-
-
-def _prepare_nilm_data(mode="train", appliance=None):
-    if mode is "train":
-        data=conf_nilm.DATASETS_TRAIN
-    else:
-        data=conf_nilm.DATASETS_EVAL
-    window_size = conf_nilm.WINDOW_SIZE
-    batch_size = conf_nilm.BATCH_SIZE
-    do_preprocessing = conf_nilm.PREPROCESSING
-    load = False
-    
-    mains, subs = nilm_seq2point.get_mains_and_subs_train(
-        data, appliance)#TODO
-
-    mains, appls = nilm_seq2point.call_preprocessing(mains, subs, 'train', window_size)
-    # TODO check method='train'
-    
-    # mains is currently list of df with many windows
-    # Convert list of dataframes to a single tensor
-    main_tensors = []
-    mains_len = 0
-    for main_df in mains:
-        if not main_df.empty:
-            mains_len += len(main_df)
-        main_tensors.append(tf.convert_to_tensor(main_df))
-    if mains_len <= 1:
-        raise ValueError('No mains data found in provided time frame') 
-    print('num of mains:', mains_len)
-
-    mains_t = tf.squeeze(tf.convert_to_tensor(main_tensors))
-
-    appl_tensors = []
-    for appl_df in appls:
-        appl_tensors.append(tf.convert_to_tensor(appl_df)) # TODO for more appliances
-    appl_t = tf.squeeze(tf.convert_to_tensor(appl_tensors))
-    return mains_t, appl_t, mains_len
 
 
 def _get_default_net_config(path, net_name):
@@ -212,9 +185,8 @@ def get_config(problem_name, path=None, mode=None, net_name=None, appliance='fri
     
     if mode is None:
         mode = "train" if path is None else "test"
-    mains, appls, mains_len = _prepare_nilm_data(mode, appliance=appliance)
     
-    problem = nilm_seq2point.model(mode=mode, mains=mains, appliances=appls, mains_len=mains_len, appliance=appliance) 
+    problem, mains_p, appl_p = nilm_seq2point.model(mode=mode, appliance=appliance) 
     if shared_net:
         net_config, net_assignments = _get_default_net(path, net_name)
     else:
@@ -226,4 +198,4 @@ def get_config(problem_name, path=None, mode=None, net_name=None, appliance='fri
   else:
     raise ValueError("{} is not a valid problem".format(problem_name))
 
-  return problem, net_config, net_assignments
+  return problem, net_config, net_assignments, mains_p, appl_p
