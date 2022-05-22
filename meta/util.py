@@ -27,7 +27,7 @@ from six.moves import xrange
 
 import problems
 import nilm_seq2point
-import nilm_config
+import conf_nilm
 import random
 
 
@@ -114,19 +114,18 @@ def print_stats(header, total_error, total_time, n):
   print("Mean epoch time: {:.2f} s".format(total_time / n))
 
 
-def _prepare_nilm_data(mode="train"):
+def _prepare_nilm_data(mode="train", appliance=None):
     if mode is "train":
-        data=nilm_config.DATASETS_TRAIN
+        data=conf_nilm.DATASETS_TRAIN
     else:
-        data=nilm_config.DATASETS_EVAL
-    appliances = nilm_config.APPLIANCES
-    window_size = nilm_config.WINDOW_SIZE
-    batch_size = nilm_config.BATCH_SIZE
-    do_preprocessing = nilm_config.PREPROCESSING
+        data=conf_nilm.DATASETS_EVAL
+    window_size = conf_nilm.WINDOW_SIZE
+    batch_size = conf_nilm.BATCH_SIZE
+    do_preprocessing = conf_nilm.PREPROCESSING
     load = False
     
     mains, subs = nilm_seq2point.get_mains_and_subs_train(
-        data, appliances[0])#TODO
+        data, appliance)#TODO
 
     mains, appls = nilm_seq2point.call_preprocessing(mains, subs, 'train', window_size)
     # TODO check method='train'
@@ -169,7 +168,7 @@ def _get_default_net_config(path, net_name):
         return {
             "net": "CoordinateWiseDeepLSTM",
             "net_options": {
-                "layers": (20, 20),
+                "layers": (50, 50),
                 "preprocess_name": "LogAndSign",
                 "preprocess_options": {"k": 5},
                 "scale": 0.01,
@@ -204,19 +203,18 @@ def _get_net_per_layer_type(path, net_name):
     
 
 
-def get_config(problem_name, path=None, mode=None, net_name=None):
+def get_config(problem_name, path=None, mode=None, net_name=None, appliance='fridge'):
   """Returns problem configuration."""
-  shared_net = True if net_name == 'rnn' else nilm_config.SHARED_NET
+  shared_net = True if net_name == 'rnn' else conf_nilm.SHARED_NET
   print('Load config for path ', path, ', net name ', net_name)
 # ----------------------- RELEVANT -------------------------
   if problem_name == "nilm_seq": 
     
     if mode is None:
         mode = "train" if path is None else "test"
-    mains, appls, mains_len = _prepare_nilm_data(mode)
+    mains, appls, mains_len = _prepare_nilm_data(mode, appliance=appliance)
     
-    problem = nilm_seq2point.model(mode=mode, mains=mains, appliances=appls, mains_len=mains_len, appliance_name='fridge') # TODO get from somewhere else
-    
+    problem = nilm_seq2point.model(mode=mode, mains=mains, appliances=appls, mains_len=mains_len, appliance=appliance) 
     if shared_net:
         net_config, net_assignments = _get_default_net(path, net_name)
     else:
