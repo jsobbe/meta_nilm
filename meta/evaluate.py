@@ -36,7 +36,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib
 
-from eval_nilm import nilm_eval
 import conf_eval
 import conf_nilm
 

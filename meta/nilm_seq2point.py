@@ -26,7 +26,7 @@ from vgg16 import VGG16
 import tensorflow_probability as tfp
 import matplotlib.pyplot as plt
 
-import nilm_config
+import conf_nilm
 
 tfd = tfp.distributions
 
@@ -37,10 +37,10 @@ _nn_initializers = {
 
 
 def get_mains_and_subs_train(datasets, appliance_name):
-    power = nilm_config.POWER
-    sample_period = nilm_config.SAMPLE_PERIOD
-    drop_nans = nilm_config.DROP_NANS
-    artificial_aggregate = nilm_config.ARTIFICIAL_AGGREGATE
+    power = conf_nilm.POWER
+    sample_period = conf_nilm.SAMPLE_PERIOD
+    drop_nans = conf_nilm.DROP_NANS
+    artificial_aggregate = conf_nilm.ARTIFICIAL_AGGREGATE
     # This function has a few issues, which should be addressed soon
     print("............... Loading Data for training ...................")
     # store the train_main readings for all buildings
@@ -152,11 +152,11 @@ def _get_mean_and_std(mains):
     return mean, std
 
 
-def model(mains=None, appliances=None, appliance_name='default', mains_len=0, optimizer="L2L", mode="train", load=False, batch_size=nilm_config.BATCH_SIZE):
+def model(mains=None, appliances=None, appliance='default', mains_len=0, optimizer="L2L", mode="train", load=False, batch_size=conf_nilm.BATCH_SIZE):
     
     file_prefix = "{}-temp-weights".format("nilm-seq")
-    window_size = nilm_config.WINDOW_SIZE
-    batch_norm = nilm_config.BATCH_NORM
+    window_size = conf_nilm.WINDOW_SIZE
+    batch_norm = conf_nilm.BATCH_NORM
      
 
     """
