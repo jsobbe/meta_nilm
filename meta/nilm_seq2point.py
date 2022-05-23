@@ -58,7 +58,7 @@ def preprocess_data(mode="train", appliance=None):
     appls_list = []
     for appl_df in appls:
         appls_list.append(appl_df.to_numpy()) # TODO for more appliances
-    return np.asarray(mains_list).squeeze(), np.asarray(appls_list).squeeze()
+    return np.asarray(mains_list).squeeze(), np.expand_dims(np.asarray(appls_list).squeeze(), axis=1)
 
 def get_mains_and_subs_train(datasets, appliance_name):
     power = conf_nilm.POWER
@@ -183,8 +183,8 @@ def model(appliance='fridge', optimizer="L2L", mode="train", model_path=None, ba
     window_size = conf_nilm.WINDOW_SIZE
     batch_norm = conf_nilm.BATCH_NORM
     
-    mains = tf.placeholder(tf.float32, shape=(batch_size, window_size))
-    appls = tf.placeholder(tf.float32, shape=(batch_size, 1))
+    mains = tf.placeholder(tf.float32, shape=(None, window_size))
+    appls = tf.placeholder(tf.float32, shape=(None, 1))
      
 
     """
@@ -207,8 +207,12 @@ def model(appliance='fridge', optimizer="L2L", mode="train", model_path=None, ba
         
         # If no appliances are provided, model is presumably used for prediction, so only return output
         if not predict:
-            output = tf.squeeze(network_seq(mains))
-            return _mse(targets=appls, outputs=output), appls, output
+            indices_t = tf.random_uniform([batch_size], 0, tf.size(appls), tf.int32)
+            mains_batch = tf.gather(mains, indices_t, axis = 0)
+            print('Shape after gather: ', mains_batch.get_shape())
+            output = tf.squeeze(network_seq(mains_batch))
+            appl_batch = tf.gather(appls, indices_t, axis = 0)
+            return _mse(targets=appl_batch, outputs=output), appl_batch, output
         else:
             output = tf.squeeze(network_seq(mains))
             return output

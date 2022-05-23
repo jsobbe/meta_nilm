@@ -119,7 +119,7 @@ class nilm_eval():
         # Make sure to use the correct ac_type before using the default parameters in this code.   
         #TODO run multiple times with the same variables/references? -> Make problem instantiable with constructor and data
         if self.do_preprocessing:
-            test_main_list, _ = nilm_seq2point.call_preprocessing(test_elec, submeters_lst=None, method='nilm_test', window_size=self.window_size)
+            test_main_list, _ = nilm_seq2point.call_preprocessing(test_elec, submeters_lst=None, window_size=self.window_size)
             
         mains = []
         mains_len = 0

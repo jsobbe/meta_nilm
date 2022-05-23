@@ -150,9 +150,9 @@ def main(_):
                     for e in xrange(conf_eval.NUM_EPOCHS):
                         # Training.
                         if optimizer_name == 'rnn':
-                            time, cost, result = util.run_eval_epoch(sess, cost_op, [update], num_unrolls, step=step, unroll_len=unroll_len, mains=mains, appls=appls, mains_p=mains_p, appl_p=appl_p)
+                            time, cost, result = util.run_eval_epoch(sess, cost_op, [update], num_unrolls, step=step, unroll_len=unroll_len, feed_dict={mains_p:mains, appl_p:appls})
                         else:
-                            time, cost, result = util.run_eval_epoch(sess, cost_op, [update], num_unrolls, mains=mains, appls=appls, mains_p=mains_p, appl_p=appl_p)
+                            time, cost, result = util.run_eval_epoch(sess, cost_op, [update], num_unrolls, feed_dict={mains_p:mains, appl_p:appls})
                         total_time += time
                         total_cost += sum(cost) / num_unrolls
                         loss_record += cost

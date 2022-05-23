@@ -91,24 +91,14 @@ def run_epoch(sess, cost_op, ops, reset, num_unrolls,
   return timer() - start, cost
 
 
-def run_eval_epoch(sess, cost_op, ops, num_unrolls, mains, appls, mains_p, appl_p, step=None, unroll_len=None):
+def run_eval_epoch(sess, cost_op, ops, num_unrolls, step=None, unroll_len=None, feed_dict={}):
   """Runs one optimization epoch."""
   print('Unrolling evaluation epoch ', num_unrolls, ' times.')
   start = timer()
   # sess.run(reset)
   total_cost = []
-  feed_dict = {}
-  
   
   for i in xrange(num_unrolls):
-    indices = np.expand_dims(np.random.randint(0, high=len(mains), size=conf_nilm.BATCH_SIZE), axis=1)
-    print('INDICES:', str(indices[0]))
-    appl_batch = np.take_along_axis(np.expand_dims(appls, axis=1), indices, axis = 0)
-    print('APPL_BATCH:', str(appl_batch[0]))
-    mains_batch = np.take_along_axis(mains, indices, axis = 0)
-    print('MAINS_BATCH:', str(mains_batch[0]))
-    feed_dict[mains_p] = mains_batch
-    feed_dict[appl_p] = appl_batch
     if step is not None:
         feed_dict[step] = i * unroll_len + 1
     result = sess.run([cost_op] + ops, feed_dict=feed_dict)
