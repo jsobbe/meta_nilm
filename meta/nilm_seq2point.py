@@ -214,12 +214,14 @@ def model(appliance='fridge', optimizer="L2L", mode="train", model_path=None, ba
             appl_batch = tf.gather(appls, indices_t, axis = 0)
             return _mse(targets=appl_batch, outputs=output), appl_batch, output
         else:
+            indices_t = tf.range(0, batch_size)
+            mains_batch = tf.gather(mains, indices_t, axis = 0)
             output = tf.squeeze(network_seq(mains))
             return output
         
     def conv_layer(inputs, strides, filter_size, output_channels, padding, name):
         # get size of last layer
-        n_channels = int(inputs.get_shape()[-1])
+        n_channels = inputs.get_shape()[-1]
         with tf.variable_scope(name, reuse=tf.AUTO_REUSE) as scope:
             if model_path:
                 # init random weights
@@ -251,7 +253,7 @@ def model(appliance='fridge', optimizer="L2L", mode="train", model_path=None, ba
         
     def dense_layer(inputs, units, name, relu=False):
 #         inputs = tf.reshape(inputs, [units, -1])
-        fc_shape2 = int(inputs.get_shape()[-1])
+        fc_shape2 = inputs.get_shape()[-1]
         with tf.variable_scope(name, reuse=tf.AUTO_REUSE) as scope:
             if model_path:
                 # init random weights

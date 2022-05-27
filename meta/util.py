@@ -131,7 +131,7 @@ def _get_default_net_config(path, net_name):
         return {
             "net": "CoordinateWiseDeepLSTM",
             "net_options": {
-                "layers": (50, 50),
+                "layers": (20, 20),
                 "preprocess_name": "LogAndSign",
                 "preprocess_options": {"k": 5},
                 "scale": 0.01,
@@ -166,17 +166,12 @@ def _get_net_per_layer_type(path, net_name):
     
 
 
-def get_config(problem_name, path=None, mode=None, net_name=None, appliance='fridge'):
+def get_config(problem_name, path=None, net_name=None, appliance='fridge'):
   """Returns problem configuration."""
   shared_net = True if net_name == 'rnn' else conf_nilm.SHARED_NET
   print('Load config for path ', path, ', net name ', net_name)
 # ----------------------- RELEVANT -------------------------
   if problem_name == "nilm_seq": 
-    
-    if mode is None:
-        mode = "train" if path is None else "test"
-    
-    problem, mains_p, appl_p = nilm_seq2point.model(mode=mode, appliance=appliance) 
     if shared_net:
         net_config, net_assignments = _get_default_net(path, net_name)
     else:
@@ -188,4 +183,4 @@ def get_config(problem_name, path=None, mode=None, net_name=None, appliance='fri
   else:
     raise ValueError("{} is not a valid problem".format(problem_name))
 
-  return problem, net_config, net_assignments, mains_p, appl_p
+  return net_config, net_assignments
