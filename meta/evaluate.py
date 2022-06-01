@@ -38,6 +38,7 @@ import matplotlib
 
 import conf_eval
 import conf_nilm
+import nilm_seq2point
 
 SEEDS = random.sample(range(0, 100), conf_eval.NUM_RUNS)
 
@@ -65,7 +66,10 @@ def main(_):
             num_unrolls = conf_eval.NUM_STEPS
 
             # Problem, NET_CONFIG = predefined conf for META-net, NET_ASSIGNMENTS = None
-            problem, net_config, net_assignments = util.get_config(conf_eval.PROBLEM, path, net_name='rnn' if optimizer_name=='rnn' else None, appliance=appliance)
+            mains, appls = nilm_seq2point.preprocess_data(mode='eval', appliance=appliance)
+            problem = nilm_seq2point.model(mode='eval', appliance=appliance, appls=appls, mains=mains) 
+            net_config, net_assignments = util.get_config(conf_eval.PROBLEM, path, net_name='rnn' if optimizer_name=='rnn' else None, appliance=appliance)
+           
             step=None
             unroll_len=None
 
