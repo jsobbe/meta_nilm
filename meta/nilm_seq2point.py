@@ -35,6 +35,9 @@ _nn_initializers = {
     "b": tf.random_normal_initializer(mean=0, stddev=0.01),
 }
 
+"""
+Returns: nparrays for appls and mains
+"""
 def preprocess_data(mode="train", appliance=None):
     if mode is "train":
         data=conf_nilm.DATASETS_TRAIN
@@ -185,6 +188,8 @@ def model(appliance='fridge', optimizer="L2L", mode="train", model_path=None, ba
     
     mains = tf.placeholder(tf.float32, shape=(None, window_size))
     appls = tf.placeholder(tf.float32, shape=(None, 1))
+    size = tf.placeholder(tf.int32, shape=(1))
+    indices = tf.placeholder(tf.int32, shape=(batch_size))
      
 
     """
@@ -207,11 +212,11 @@ def model(appliance='fridge', optimizer="L2L", mode="train", model_path=None, ba
         
         # If no appliances are provided, model is presumably used for prediction, so only return output
         if not predict:
-            indices_t = tf.random_uniform([batch_size], 0, tf.size(appls), tf.int32)
-            mains_batch = tf.gather(mains, indices_t, axis = 0)
+            #indices_t = tf.random_uniform([batch_size], tf.constant(0), size, tf.int32)
+            mains_batch = tf.gather(mains, indices, axis = 0)
             print('Shape after gather: ', mains_batch.get_shape())
             output = tf.squeeze(network_seq(mains_batch))
-            appl_batch = tf.gather(appls, indices_t, axis = 0)
+            appl_batch = tf.gather(appls, indices, axis = 0)
             return _mse(targets=appl_batch, outputs=output), appl_batch, output
         else:
             indices_t = tf.range(0, batch_size)
@@ -320,4 +325,4 @@ def model(appliance='fridge', optimizer="L2L", mode="train", model_path=None, ba
 
 
 
-    return build, mains, appls
+    return build, mains, appls, indices

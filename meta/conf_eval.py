@@ -6,8 +6,8 @@ SAVE_MODEL = True
 
 # Experimental setup
 NUM_RUNS = 1
-NUM_EPOCHS = 1
-NUM_STEPS = 1000
+NUM_EPOCHS = 5
+NUM_STEPS = 150
 LEARNING_RATE = 0.001
 
 # META setup
