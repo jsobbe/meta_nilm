@@ -60,8 +60,8 @@ def preprocess_data(mode="train", appliance=None):
 
     appls_list = []
     for appl_df in appls:
-        appls_list.append(appl_df.to_numpy()) # TODO for more appliances
-    return np.asarray(mains_list).squeeze(), np.expand_dims(np.asarray(appls_list).squeeze(), axis=1)
+        appls_list.append(appl_df.to_numpy())
+    return np.asarray(mains_list).squeeze(), np.asarray(appls_list).squeeze()
 
 def get_mains_and_subs_train(datasets, appliance_name):
     power = conf_nilm.POWER
@@ -187,9 +187,7 @@ def model(appliance='fridge', optimizer="L2L", mode="train", model_path=None, ba
     batch_norm = conf_nilm.BATCH_NORM
     
     mains = tf.placeholder(tf.float32, shape=(None, window_size))
-    appls = tf.placeholder(tf.float32, shape=(None, 1))
-    size = tf.placeholder(tf.int32, shape=(1))
-    indices = tf.placeholder(tf.int32, shape=(batch_size))
+    appls = tf.placeholder(tf.float32, shape=(None))
      
 
     """
@@ -212,11 +210,11 @@ def model(appliance='fridge', optimizer="L2L", mode="train", model_path=None, ba
         
         # If no appliances are provided, model is presumably used for prediction, so only return output
         if not predict:
-            #indices_t = tf.random_uniform([batch_size], tf.constant(0), size, tf.int32)
-            mains_batch = tf.gather(mains, indices, axis = 0)
+            indices_t = tf.random_uniform([batch_size], 0, tf.size(appls), tf.int32)
+            mains_batch = tf.gather(mains, indices_t, axis = 0)
             print('Shape after gather: ', mains_batch.get_shape())
             output = tf.squeeze(network_seq(mains_batch))
-            appl_batch = tf.gather(appls, indices, axis = 0)
+            appl_batch = tf.gather(appls, indices_t, axis = 0)
             return _mse(targets=appl_batch, outputs=output), appl_batch, output
         else:
             indices_t = tf.range(0, batch_size)
@@ -325,4 +323,4 @@ def model(appliance='fridge', optimizer="L2L", mode="train", model_path=None, ba
 
 
 
-    return build, mains, appls, indices
+    return build, mains, appls

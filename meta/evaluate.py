@@ -68,7 +68,7 @@ def main(_):
 
             # Problem, NET_CONFIG = predefined conf for META-net, NET_ASSIGNMENTS = None
             mains, appls = nilm_seq2point.preprocess_data(mode='eval', appliance=appliance)
-            problem, mains_p, appl_p, ind_p = nilm_seq2point.model(mode='eval', appliance=appliance) 
+            problem, mains_p, appl_p = nilm_seq2point.model(mode='eval', appliance=appliance) 
             net_config, net_assignments = util.get_config(conf_eval.PROBLEM, path, net_name='rnn' if optimizer_name=='rnn' else None, appliance=appliance)
             step=None
             unroll_len=None
@@ -151,9 +151,9 @@ def main(_):
                     for e in xrange(conf_eval.NUM_EPOCHS):
                         # Training.
                         if optimizer_name == 'rnn':
-                            time, cost, result = util.run_eval_epoch(sess, cost_op, [update], num_unrolls, step=step, unroll_len=unroll_len, feed_dict={mains_p:mains, appl_p:appls}, ind_p=ind_p, size=appls.size)
+                            time, cost, result = util.run_eval_epoch(sess, cost_op, [update], num_unrolls, step=step, unroll_len=unroll_len, feed_dict={mains_p:mains, appl_p:appls})
                         else:
-                            time, cost, result = util.run_eval_epoch(sess, cost_op, [update], num_unrolls, feed_dict={mains_p:mains, appl_p:appls}, ind_p=ind_p, size=appls.size)
+                            time, cost, result = util.run_eval_epoch(sess, cost_op, [update], num_unrolls, feed_dict={mains_p:mains, appl_p:appls})
                         total_time += time
                         total_cost += sum(cost) / num_unrolls
                         loss_record += cost

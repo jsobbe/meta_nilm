@@ -140,7 +140,7 @@ class nilm_eval():
                 with tf.Session() as sess:
                     model_path = conf_nilm.MODEL_PATH + appliance + '/' + optimizer + '/'
                     
-                    problem, mains_p, _, _ = nilm_seq2point.model(mode='nilm_test', model_path=model_path, optimizer=optimizer, batch_size=mains_len, predict=True)
+                    problem, mains_p, _ = nilm_seq2point.model(mode='nilm_test', model_path=model_path, optimizer=optimizer, batch_size=mains_len, predict=True)
                     result = problem()
                     sess.run(tf.global_variables_initializer())
                     sess.run(tf.local_variables_initializer())
