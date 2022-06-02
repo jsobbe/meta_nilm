@@ -7,19 +7,19 @@ SAVE_MODEL = True
 # Experimental setup
 NUM_RUNS = 1
 NUM_EPOCHS = 5
-NUM_STEPS = 150
+NUM_STEPS = 120
 LEARNING_RATE = 0.001
 
 # META setup
 OPTIMIZERS = {
-    'adam':'',
+    #'adam':'',
     #'adagrad':'',
     #'momentum':'',
     #'rmsprop':'',
     #'dm': [META_MODEL_PATH + 'dm/conv.l2l-0', META_MODEL_PATH + 'dm/fc.l2l-0'], 
     #'dm': META_MODEL_PATH + 'dm/cw.l2l-0', 
     #'dme': [META_MODEL_PATH + 'dme/conv.l2l-0', META_MODEL_PATH + 'dme/fc.l2l-0'], 
-    #'rnn': META_MODEL_PATH + 'rnnprop/rp.l2l-0'
+    'rnn': META_MODEL_PATH + 'rnnprop/rp.l2l-0'
 }
 PROBLEM = 'nilm_seq'
 APPLIANCES = [

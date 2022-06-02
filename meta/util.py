@@ -34,7 +34,7 @@ import random
 def run_epoch(sess, cost_op, ops, reset, num_unrolls,
               scale=None, rd_scale=False, rd_scale_bound=3.0, assign_func=None, var_x=None,
               step=None, unroll_len=None,
-              task_i=-1, data=None, label_pl=None, input_pl=None):
+              task_i=-1, data=None, label_pl=None, input_pl=None, feed_dict={}):
   print('Unrolling training epoch ', num_unrolls, ' times.')
   """Runs one optimization epoch."""
   start = timer()
@@ -64,7 +64,7 @@ def run_epoch(sess, cost_op, ops, reset, num_unrolls,
         feed_rs = {p: v for p, v in zip(scale, randomized_scale)}
       else:
         feed_rs = {}
-      feed_dict = feed_rs
+      feed_dict.update(feed_rs)
       for i in xrange(num_unrolls):
         if step is not None:
             feed_dict[step] = i*unroll_len+1
@@ -91,7 +91,7 @@ def run_epoch(sess, cost_op, ops, reset, num_unrolls,
   return timer() - start, cost
 
 
-def run_eval_epoch(sess, cost_op, ops, num_unrolls, step=None, unroll_len=None, feed_dict={}, ind_p=None, size=0):
+def run_eval_epoch(sess, cost_op, ops, num_unrolls, step=None, unroll_len=None, feed_dict={}):
   """Runs one optimization epoch."""
   print('Unrolling evaluation epoch ', num_unrolls, ' times.')
   start = timer()
@@ -99,7 +99,6 @@ def run_eval_epoch(sess, cost_op, ops, num_unrolls, step=None, unroll_len=None, 
   total_cost = []
   
   for i in xrange(num_unrolls):
-    feed_dict[ind_p] = np.random.randint(0, size, conf_nilm.BATCH_SIZE)
     if step is not None:
         feed_dict[step] = i * unroll_len + 1
     result = sess.run([cost_op] + ops, feed_dict=feed_dict)
