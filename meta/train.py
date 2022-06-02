@@ -26,40 +26,54 @@ from timeit import default_timer as timer
 from six.moves import xrange
 from tensorflow.contrib.learn.python.learn import monitored_session as ms
 import tensorflow as tf
+import matplotlib.pyplot as plt
+import matplotlib
 
 from data_generator import data_loader
-import meta_dm_train as meta
+import meta_dm_train as meta_dm
+import meta_rnnprop_train as meta_rnn
 import numpy as np
 import util
 
 import conf_train
 import conf_nilm
+import nilm_seq2point
 
-use_curriculum = False
-use_imitation = False
 
 
 def main(_):
+    font = {'family' : 'normal',
+        'size'   : 16}
+    matplotlib.rc('font', **font)
+    
+    use_curriculum = False
+    use_imitation = False
+    
     np.set_printoptions(precision=3)
     
     for appliance in conf_train.APPLIANCES:
         loss_records = {}
+        validation_records = {}
         for optimizer_name in conf_train.OPTIMIZERS:
             loss_records[optimizer_name] = list()
+            validation_records[optimizer_name] = list()
             save_path = conf_train.SAVE_PATH + optimizer_name + '/'
             
             seq_step = None
             unroll_len = None
             if 'rnn' in optimizer_name:
                 unroll_len = conf_train.UNROLL_LENGTH
+            if '_e' in optimizer_name:
+                use_curriculum = True
+                use_imitation = True
     
             if conf_train.UNROLL_LENGTH > conf_train.NUM_STEPS:
                 raise ValueError('Unroll length larger than steps!')
 
             # Configuration.
-            if conf_train.USE_CURRICULUM:
+            if use_curriculum:
                 num_steps = [100, 200, 500, 1000, 1500, 2000, 2500, 3000]
-                num_unrolls = [int(ns / conf_train.unroll_length) for ns in num_steps]
+                num_unrolls = [int(ns / conf_train.UNROLL_LENGTH) for ns in num_steps]
                 print('Resulting unrolls for curriculum: ', num_unrolls)
                 num_unrolls_eval = num_unrolls[1:]
                 curriculum_idx = 0
@@ -71,27 +85,35 @@ def main(_):
                 if not os.path.exists(save_path):
                     os.mkdir(save_path)
 
-            # Problem.
-            problem, net_config, net_assignments = util.get_config(conf_train.PROBLEM, net_name='rnn' if optimizer_name=='rnn' else None, appliance=appliance)
+             # Problem, NET_CONFIG = predefined conf for META-net, NET_ASSIGNMENTS = None
+            mains, appls = nilm_seq2point.preprocess_data(mode='train', appliance=appliance)
+            problem = nilm_seq2point.model(mode='train', appliance=appliance, mains=mains, appls=appls) 
+            net_config, net_assignments = util.get_config(conf_train.PROBLEM, net_name='rnn' if optimizer_name=='rnn' else None, appliance=appliance)
 
             # Optimizer setup.
             if 'rnn' in optimizer_name:
-                optimizer = meta.MetaOptimizer(conf_train.NUM_MT, conf_train.BETA1, conf_train.BETA2, **net_config)
+                optimizer = meta_rnn.MetaOptimizer(conf_train.NUM_MT, conf_train.BETA1, conf_train.BETA2, **net_config)
+                minimize, scale, var_x, constants, subsets, seq_step, \
+                    loss_mt, steps_mt, update_mt, reset_mt, mt_labels, mt_inputs, gt, pred = optimizer.meta_minimize(
+                        problem, conf_train.UNROLL_LENGTH,
+                        learning_rate=conf_train.LEARNING_RATE,
+                        net_assignments=net_assignments,
+                        second_derivatives=conf_train.SECOND_DERIVATIVES)
             else:
-                optimizer = meta.MetaOptimizer(conf_train.NUM_MT, **net_config)
-            minimize, scale, var_x, constants, subsets, \
-                loss_mt, steps_mt, update_mt, reset_mt, mt_labels, mt_inputs, gt, pred = optimizer.meta_minimize(
-                    problem, conf_train.UNROLL_LENGTH,
-                    learning_rate=conf_train.LEARNING_RATE,
-                    net_assignments=net_assignments,
-                    second_derivatives=conf_train.SECOND_DERIVATIVES)
+                optimizer = meta_dm.MetaOptimizer(conf_train.NUM_MT, **net_config)
+                minimize, scale, var_x, constants, subsets, \
+                    loss_mt, steps_mt, update_mt, reset_mt, mt_labels, mt_inputs, gt, pred = optimizer.meta_minimize(
+                        problem, conf_train.UNROLL_LENGTH,
+                        learning_rate=conf_train.LEARNING_RATE,
+                        net_assignments=net_assignments,
+                        second_derivatives=conf_train.SECOND_DERIVATIVES)
             step, update, reset, cost_op, _ = minimize 
 
             # Data generator for multi-task learning.
-            if conf_train.USE_IMITATION:
+            if use_imitation:
                 data_mt = data_loader(problem, var_x, constants, subsets, scale,
-                                      conf_train.OPTIMIZERS, conf_train.UNROLL_LENGTH)
-                if conf_train.USE_CURRICULUM:
+                                      conf_train.MT_OPTIMIZERS, conf_train.UNROLL_LENGTH)
+                if use_curriculum:
                     mt_ratios = [float(r) for r in conf_train.MT_RATIOS.split()]
 
             # Assign func.
@@ -124,8 +146,8 @@ def main(_):
                 for e in xrange(conf_train.NUM_EPOCHS):
                     print('Run EPOCH: ', e)
                     # Pick a task if it's multi-task learning.
-                    if conf_train.USE_IMITATION:
-                        if conf_train.USE_CURRICULUM:
+                    if use_imitation:
+                        if use_curriculum:
                             if curriculum_idx >= len(mt_ratios):
                                 mt_ratio = mt_ratios[-1]
                             else:
@@ -141,7 +163,7 @@ def main(_):
                         task_i = -1
 
                     # Training.
-                    if conf_train.USE_CURRICULUM:
+                    if use_curriculum:
                         num_unrolls_cur = num_unrolls[curriculum_idx]
                     else:
                         num_unrolls_cur = num_unrolls
@@ -178,7 +200,7 @@ def main(_):
 
                     # Evaluation after conf_train.VALID_PERIOD epochs.
                     if (e+1) % conf_train.VALIDATION_PERIOD == 0:
-                        if conf_train.USE_CURRICULUM:
+                        if use_curriculum:
                             num_unrolls_eval_cur = num_unrolls_eval[curriculum_idx]
                         else:
                             num_unrolls_eval_cur = num_unrolls
@@ -187,17 +209,20 @@ def main(_):
                         eval_cost = 0
                         for _ in xrange(conf_train.VALIDATION_EPOCHS):
                             time, cost = util.run_epoch(sess, cost_op, [update], reset,
-                                                        num_unrolls_eval_cur)
+                                            num_unrolls_eval_cur,
+                                            step=seq_step,
+                                            unroll_len=conf_train.UNROLL_LENGTH)
                             eval_cost += cost
+                        validation_records[optimizer_name].append(eval_cost)
 
-                        if conf_train.USE_CURRICULUM:
+                        if use_curriculum:
                             num_steps_cur = num_steps[curriculum_idx]
                         else:
                             num_steps_cur = conf_train.NUM_STEPS
                         print ("epoch={}, num_steps={}, eval_loss={}".format(
                             e, num_steps_cur, eval_cost / conf_train.VALIDATION_EPOCHS), flush=True)
 
-                        if not conf_train.USE_CURRICULUM:
+                        if not use_curriculum:
                             if eval_cost < best_evaluation:
                                 best_evaluation = eval_cost
                                 optimizer.save(sess, save_path, e + 1)
@@ -226,8 +251,9 @@ def main(_):
                             eval_cost = 0
                             for _ in xrange(conf_train.VALIDATION_EPOCHS):
                                 time, cost = util.run_epoch(sess, cost_op, [update], reset,
-                                                            num_unrolls_eval[curriculum_idx],
-                                                            step=seq_step, unroll_len=unroll_len)
+                                                num_unrolls_eval_cur,
+                                                step=seq_step,
+                                                unroll_len=conf_train.UNROLL_LENGTH)
                                 eval_cost += cost
                             best_evaluation = eval_cost
                             print("epoch={}, num_steps={}, eval loss={}".format(
@@ -243,17 +269,51 @@ def main(_):
                     #print('Final predicted appliance data (length=', pred_final.size, ') has mean of ' + 
                     #      str(np.mean(pred_final)) + ' and std of ' + str(np.std(pred_final)) + '.')
                 
-                _save_optimizer_results(loss_records[optimizer_name], optimizer_name, appliance)
+                _save_optimizer_results(loss_records[optimizer_name], appliance, optimizer_name)
+        _plot_appliance_results(loss_records, appliance, optimizer_name,)
+        _plot_validation_results(validation_records, appliance, optimizer_name,)
 
     
-def _save_optimizer_results(results, optimizer, appliance):
-    if not os.path.exists(conf_train.OUTPUT_PATH):
-        os.mkdir(conf_train.OUTPUT_PATH)
-    output_file = '{}/{}/{}_eval_loss_record.pickle-{}'.format(conf_train.OUTPUT_PATH, appliance, optimizer, conf_train.PROBLEM)
+def _save_optimizer_results(results, appliance, optimizer):
+    directory = conf_train.SAVE_PATH + appliance + '/'
+    if not os.path.exists(directory):
+        os.mkdir(directory)
+    directory += optimizer + '/'
+    if not os.path.exists(directory):
+        os.mkdir(directory)
+    output_file = '{}/train_loss_record.pickle-{}'.format(directory,conf_train.PROBLEM)
     with open(output_file, 'wb') as l_record:
         pickle.dump(results, l_record)
     print("Saving evaluate loss record {}".format(output_file))
+    
+def _plot_appliance_results(results, appliance, optimizer):
+    directory = conf_train.OUTPUT_PATH + appliance + '/'
+    if not os.path.exists(directory):
+        os.mkdir(directory)
+    directory += optimizer + '/'
+    if not os.path.exists(directory):
+        os.mkdir(directory)
+    
+    plt.figure(figsize=(21, 9))
+    plt.xlabel('Steps')
+    plt.ylabel('Loss')
+    plt.yscale("log")
+    for optimizer, result in results.items():
+        plt.plot(result, label=optimizer, linewidth='2')
+    plt.legend()
+    plt.savefig(directory + '/loss.png')
+    
+def _plot_validation_results(results, appliance, optimizer):
+    plt.figure(figsize=(10, 9))
+    plt.xlabel('Validation Epochs')
+    plt.ylabel('Loss')
+    plt.yscale("log")
+    for optimizer, result in results.items():
+        plt.plot(result, label=optimizer, linewidth='2')
+    plt.legend()
+    plt.savefig(conf_train.OUTPUT_PATH + appliance + '/' + optimizer + '/validation_loss.png')
 
     
 if __name__ == "__main__":
     tf.app.run()
+    
