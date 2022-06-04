@@ -131,7 +131,7 @@ def _get_default_net_config(path, net_name):
         return {
             "net": "CoordinateWiseDeepLSTM",
             "net_options": {
-                "layers": (50, 50),
+                "layers": (20, 20),
                 "preprocess_name": "LogAndSign",
                 "preprocess_options": {"k": 5},
                 "scale": 0.01,
@@ -180,8 +180,9 @@ def get_config(problem_name, path=None, mode=None, net_name=None, appliance='fri
         
 # ----------------------- RELEVANT -------------------------
 
-  
   else:
     raise ValueError("{} is not a valid problem".format(problem_name))
 
+  print('Net config: ', str(net_config))
+  print('Net ass: ', str(net_assignments))
   return net_config, net_assignments
