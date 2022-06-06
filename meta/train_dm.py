@@ -37,15 +37,15 @@ FLAGS = flags.FLAGS
 
 flags.DEFINE_string("save_path", None, "Path for saved meta-optimizer.")
 
-flags.DEFINE_integer("num_epochs", 10000, "Number of training epochs.")
-flags.DEFINE_integer("evaluation_period", 100, "Evaluation period.") # evaluate every 100 epochs
-flags.DEFINE_integer("evaluation_epochs", 10, "Number of evaluation epochs.")
-flags.DEFINE_integer("num_steps", 100, "Number of optimization steps per epoch.")
+flags.DEFINE_integer("num_epochs", 500, "Number of training epochs.")
+flags.DEFINE_integer("evaluation_period", 5ß, "Evaluation period.") # evaluate every 100 epochs
+flags.DEFINE_integer("evaluation_epochs", 5, "Number of evaluation epochs.")
+flags.DEFINE_integer("num_steps", 150, "Number of optimization steps per epoch.")
 flags.DEFINE_integer("unroll_length", 20, "Meta-optimizer unroll length.") # Default was 20 
 flags.DEFINE_float("learning_rate", 0.001, "Learning rate.")
 flags.DEFINE_boolean("second_derivatives", False, "Use second derivatives.")
 
-flags.DEFINE_string("problem", "mnist", "Type of problem.")
+flags.DEFINE_string("problem", "nilm_seq", "Type of problem.")
 flags.DEFINE_boolean("save", False, "Whether to save the resulting nilm-model.")
 flags.DEFINE_boolean("load", False, "Whether to continue training saved model.")
 

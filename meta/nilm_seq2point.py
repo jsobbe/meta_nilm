@@ -36,7 +36,7 @@ _nn_initializers = {
 }
 
 """
-Returns numpy arrays with appls and mains
+Returns tensors with appls and mains
 """
 def preprocess_data(mode="train", appliance=None):
     if mode is "train":
@@ -48,20 +48,31 @@ def preprocess_data(mode="train", appliance=None):
     do_preprocessing = conf_nilm.PREPROCESSING
     load = False
 
-    mains, subs = get_mains_and_subs_train(data, appliance)
+    mains, subs = get_mains_and_subs_train(
+        data, appliance)#TODO
+
     mains, appls = call_preprocessing(mains, subs, window_size)
+    # TODO check method='train'
 
     # mains is currently list of df with many windows
     # Convert list of dataframes to a single tensor
-    mains_list = []
+    main_tensors = []
+    mains_len = 0
     for main_df in mains:
         if not main_df.empty:
-            mains_list.append(main_df.to_numpy())
+            mains_len += len(main_df)
+        main_tensors.append(tf.convert_to_tensor(main_df))
+    if mains_len <= 1:
+        raise ValueError('No mains data found in provided time frame') 
+    print('num of mains:', mains_len)
 
-    appls_list = []
+    mains_t = tf.squeeze(tf.convert_to_tensor(main_tensors))
+
+    appl_tensors = []
     for appl_df in appls:
-        appls_list.append(appl_df.to_numpy())
-    return np.asarray(mains_list).squeeze(), np.asarray(appls_list).squeeze()
+        appl_tensors.append(tf.convert_to_tensor(appl_df)) # TODO for more appliances
+    appl_t = tf.squeeze(tf.convert_to_tensor(appl_tensors))
+    return mains_t, appl_t, mains_len
 
 def get_mains_and_subs_train(datasets, appliance_name):
     power = conf_nilm.POWER
@@ -179,7 +190,7 @@ def _get_mean_and_std(mains):
     return mean, std
 
 
-def model(appliance='fridge', optimizer="L2L", mode="train", model_path=None, batch_size=conf_nilm.BATCH_SIZE, predict=False, mains=None, appls=None):
+def model(appliance='fridge', optimizer="L2L", mode="train", model_path=None, batch_size=conf_nilm.BATCH_SIZE, predict=False, mains=None, appls=None, size=0):
     
     file_prefix = "{}-temp-weights".format("nilm-seq")
     window_size = conf_nilm.WINDOW_SIZE
@@ -205,7 +216,7 @@ def model(appliance='fridge', optimizer="L2L", mode="train", model_path=None, ba
         
         # If no appliances are provided, model is presumably used for prediction, so only return output
         if not predict:
-            indices_t = tf.random_uniform([batch_size], 0, appls.size, tf.int64)
+            indices_t = tf.random_uniform([batch_size], 0, size, tf.int64)
             mains_batch = tf.gather(mains, indices_t, axis = 0)
             print('Shape after gather: ', mains_batch.get_shape())
             output = tf.squeeze(network_seq(mains_batch))

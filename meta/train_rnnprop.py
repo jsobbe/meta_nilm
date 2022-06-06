@@ -31,16 +31,17 @@ from data_generator import data_loader
 import meta_rnnprop_train as meta
 import numpy as np
 import util
+import nilm_seq2point
 
 flags = tf.flags
 FLAGS = flags.FLAGS
 
 flags.DEFINE_string("save_path", None, "Path for saved meta-optimizer.")
 
-flags.DEFINE_integer("num_epochs", 10000, "Number of training epochs.")
+flags.DEFINE_integer("num_epochs", 500, "Number of training epochs.")
 flags.DEFINE_integer("evaluation_period", 50, "Evaluation period.")
-flags.DEFINE_integer("evaluation_epochs", 10, "Number of evaluation epochs.")
-flags.DEFINE_integer("num_steps", 100, "Number of optimization steps per epoch.")
+flags.DEFINE_integer("evaluation_epochs", 5, "Number of evaluation epochs.")
+flags.DEFINE_integer("num_steps", 150, "Number of optimization steps per epoch.")
 flags.DEFINE_integer("unroll_length", 20, "Meta-optimizer unroll length.")
 flags.DEFINE_float("learning_rate", 0.001, "Learning rate.")
 flags.DEFINE_boolean("second_derivatives", False, "Use second derivatives.")
@@ -50,7 +51,7 @@ flags.DEFINE_boolean("load", False, "Whether to continue training saved model.")
 flags.DEFINE_float("beta1", 0.95, "")
 flags.DEFINE_float("beta2", 0.95, "")
 
-flags.DEFINE_string("problem", "mnist", "Type of problem.")
+flags.DEFINE_string("problem", "nilm_seq", "Type of problem.")
 
 flags.DEFINE_boolean("if_scale", False, "")
 flags.DEFINE_float("rd_scale_bound", 3.0, "Bound for random scaling on the main optimizee.")
@@ -87,7 +88,9 @@ def main(_):
             os.mkdir(FLAGS.save_path)
 
     # Problem.
-    problem, net_config, net_assignments = util.get_config(FLAGS.problem, net_name="rnn")
+    net_config, net_assignments = util.get_config(FLAGS.problem, net_name='rnn')
+    mains, appls, size = nilm_seq2point.preprocess_data(mode='train', appliance='fridge')
+    problem = nilm_seq2point.model(mode='train', appliance='fridge', mains=mains, appls=appls, size=size) 
 
     # Optimizer setup.
     optimizer = meta.MetaOptimizer(FLAGS.num_mt, FLAGS.beta1, FLAGS.beta2, **net_config)
@@ -179,6 +182,7 @@ def main(_):
                                             data=data_e,
                                             label_pl=mt_labels[task_i],
                                             input_pl=mt_inputs[task_i])
+            print('Finished EPOCH: ', e, ' with step: ', seq_step, ' and unroll len: ', FLAGS.unroll_length)
             print ("training_loss={}".format(cost))
 
             # Evaluation.

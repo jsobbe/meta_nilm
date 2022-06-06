@@ -86,7 +86,7 @@ def main(_):
                     os.mkdir(save_path)
 
              # Problem, NET_CONFIG = predefined conf for META-net, NET_ASSIGNMENTS = None
-            net_config, net_assignments = util.get_config(conf_train.PROBLEM, net_name='rnn' if 'rnn' in optimizer_name else None, appliance=appliance)
+            net_config, net_assignments = util.get_config(conf_train.PROBLEM, net_name='rnn' if 'rnn' in optimizer_name else None)
             mains, appls = nilm_seq2point.preprocess_data(mode='train', appliance=appliance)
             problem = nilm_seq2point.model(mode='train', appliance=appliance, mains=mains, appls=appls) 
 
@@ -99,6 +99,7 @@ def main(_):
                         learning_rate=conf_train.LEARNING_RATE,
                         net_assignments=net_assignments,
                         second_derivatives=conf_train.SECOND_DERIVATIVES)
+                step, update, reset, cost_op, _ = minimize 
             else:
                 optimizer = meta_dm.MetaOptimizer(conf_train.NUM_MT, **net_config)
                 minimize, scale, var_x, constants, subsets, \
@@ -107,7 +108,7 @@ def main(_):
                         learning_rate=conf_train.LEARNING_RATE,
                         net_assignments=net_assignments,
                         second_derivatives=conf_train.SECOND_DERIVATIVES)
-            step, update, reset, cost_op, _ = minimize 
+                step, update, reset, cost_op, _ = minimize 
 
             # Data generator for multi-task learning.
             if use_imitation:
@@ -133,8 +134,8 @@ def main(_):
                 for rst in [reset] + reset_mt:
                     sess.run(rst)
 
-                if conf_train.CONTINUE_TRAINING:
-                    optimizer.restore(sess, save_path, 0)
+                #if conf_train.CONTINUE_TRAINING:
+                #    optimizer.restore(sess, save_path, 0)
 
                 # Start.
                 start_time = timer()
@@ -194,7 +195,7 @@ def main(_):
                                                     data=data_e,
                                                     label_pl=mt_labels[task_i],
                                                     input_pl=mt_inputs[task_i])
-                    print('Finished EPOCH: ', e)
+                    print('Finished EPOCH: ', e, ' with step: ', seq_step, ' and unroll len: ', unroll_len)
                     print ("training_loss={}".format(cost))
                     loss_records[optimizer_name].append(cost)
 
@@ -211,7 +212,7 @@ def main(_):
                             time, cost = util.run_epoch(sess, cost_op, [update], reset,
                                             num_unrolls_eval_cur,
                                             step=seq_step,
-                                            unroll_len=conf_train.UNROLL_LENGTH)
+                                            unroll_len=unroll_len)
                             eval_cost += cost
                         validation_records[optimizer_name].append(eval_cost)
 

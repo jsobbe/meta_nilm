@@ -4,9 +4,9 @@ OUTPUT_PATH = "./meta/results/0_train/"
 # General training/model choices
 PROBLEM = "nilm_seq"
 OPTIMIZERS = [
-    'dm', 
+    #'dm', 
     #'dm_e', 
-    #'rnnprop',
+    'rnnprop',
     #'rnnprop_e'
 ]
 APPLIANCES = [
@@ -21,10 +21,10 @@ USE_IMITATION = False
 USE_CURRICULUM = False
 
 # Training parameters
-NUM_EPOCHS = 500
-VALIDATION_PERIOD = 100
-VALIDATION_EPOCHS = 10
-NUM_STEPS = 200
+NUM_EPOCHS = 400
+VALIDATION_PERIOD = 50
+VALIDATION_EPOCHS = 5
+NUM_STEPS = 150
 UNROLL_LENGTH = 20
 LEARNING_RATE = 0.001
 SECOND_DERIVATIVES = False

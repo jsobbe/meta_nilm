@@ -166,7 +166,7 @@ def _get_net_per_layer_type(path, net_name):
     
 
 
-def get_config(problem_name, path=None, mode=None, net_name=None, appliance='fridge'):
+def get_config(problem_name, path=None, mode=None, net_name=None):
   """Returns problem configuration."""
   shared_net = True if net_name == 'rnn' else conf_nilm.SHARED_NET
   print('Load config for path ', path, ', net name ', net_name)
