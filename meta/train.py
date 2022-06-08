@@ -87,8 +87,8 @@ def main(_):
 
              # Problem, NET_CONFIG = predefined conf for META-net, NET_ASSIGNMENTS = None
             net_config, net_assignments = util.get_config(conf_train.PROBLEM, net_name='rnn' if 'rnn' in optimizer_name else None)
-            mains, appls = nilm_seq2point.preprocess_data(mode='train', appliance=appliance)
-            problem = nilm_seq2point.model(mode='train', appliance=appliance, mains=mains, appls=appls) 
+            mains, appls, size = nilm_seq2point.preprocess_data(mode='train', appliance=appliance)
+            problem = nilm_seq2point.model(mode='train', appliance=appliance, mains=mains, appls=appls, size=size) 
 
             # Optimizer setup.
             if 'rnn' in optimizer_name:
