@@ -18,9 +18,9 @@ APPLIANCES = ['fridge']
 DROP_NANS = True
 WINDOW_SIZE = 599 # According to seq paper
 SAMPLE_PERIOD = 3
-BATCH_SIZE=512
+BATCH_SIZE=128
 ARTIFICIAL_AGGREGATE = False # TODO Check what it does and what is better?
-BATCH_NORM = False # TODO from meta. Does it make sense on top of normalization done by NILMTK?
+BATCH_NORM = True # TODO from meta. Does it make sense on top of normalization done by NILMTK?
 PREPROCESSING = True
 SHARED_NET = True
 

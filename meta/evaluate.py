@@ -36,10 +36,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib
 
-import nilm_seq2point
-from eval_nilm import nilm_eval
 import conf_eval
 import conf_nilm
+import nilm_seq2point
 
 SEEDS = random.sample(range(0, 100), conf_eval.NUM_RUNS)
 
@@ -69,7 +68,8 @@ def main(_):
             # Problem, NET_CONFIG = predefined conf for META-net, NET_ASSIGNMENTS = None
             mains, appls = nilm_seq2point.preprocess_data(mode='eval', appliance=appliance)
             problem, mains_p, appl_p = nilm_seq2point.model(mode='eval', appliance=appliance) 
-            net_config, net_assignments = util.get_config(conf_eval.PROBLEM, path, net_name='rnn' if optimizer_name=='rnn' else None, appliance=appliance)
+            net_config, net_assignments = util.get_config(conf_eval.PROBLEM, path, net_name='rnn' if 'rnn' in optimizer_name else None, appliance=appliance)
+
             step=None
             unroll_len=None
 

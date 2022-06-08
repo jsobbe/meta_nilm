@@ -166,12 +166,13 @@ def _get_net_per_layer_type(path, net_name):
     
 
 
-def get_config(problem_name, path=None, net_name=None, appliance='fridge'):
+def get_config(problem_name, path=None, net_name=None):
   """Returns problem configuration."""
   shared_net = True if net_name == 'rnn' else conf_nilm.SHARED_NET
   print('Load config for path ', path, ', net name ', net_name)
 # ----------------------- RELEVANT -------------------------
   if problem_name == "nilm_seq": 
+    
     if shared_net:
         net_config, net_assignments = _get_default_net(path, net_name)
     else:
@@ -179,8 +180,9 @@ def get_config(problem_name, path=None, net_name=None, appliance='fridge'):
         
 # ----------------------- RELEVANT -------------------------
 
-  
   else:
     raise ValueError("{} is not a valid problem".format(problem_name))
 
+  print('Net config: ', str(net_config))
+  print('Net ass: ', str(net_assignments))
   return net_config, net_assignments

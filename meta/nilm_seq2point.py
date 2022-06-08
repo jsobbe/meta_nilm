@@ -47,7 +47,7 @@ def preprocess_data(mode="train", appliance=None):
     batch_size = conf_nilm.BATCH_SIZE
     do_preprocessing = conf_nilm.PREPROCESSING
     load = False
-    
+
     mains, subs = get_mains_and_subs_train(data, appliance)
     mains, appls = call_preprocessing(mains, subs, window_size)
     
@@ -185,7 +185,7 @@ def model(appliance='fridge', optimizer="L2L", mode="train", model_path=None, ba
     file_prefix = "{}-temp-weights".format("nilm-seq")
     window_size = conf_nilm.WINDOW_SIZE
     batch_norm = conf_nilm.BATCH_NORM
-    
+
     mains = tf.placeholder(tf.float32, shape=(None, window_size))
     appls = tf.placeholder(tf.float32, shape=(None))
      
@@ -211,6 +211,7 @@ def model(appliance='fridge', optimizer="L2L", mode="train", model_path=None, ba
         # If no appliances are provided, model is presumably used for prediction, so only return output
         if not predict:
             indices_t = tf.random_uniform([batch_size], 0, tf.size(appls), tf.int32)
+
             mains_batch = tf.gather(mains, indices_t, axis = 0)
             print('Shape after gather: ', mains_batch.get_shape())
             output = tf.squeeze(network_seq(mains_batch))
