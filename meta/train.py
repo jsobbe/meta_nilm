@@ -274,8 +274,8 @@ def main(_):
                     #      str(np.mean(pred_final)) + ' and std of ' + str(np.std(pred_final)) + '.')
                 
                 _save_optimizer_results(loss_records[optimizer_name], appliance, optimizer_name)
-        _plot_appliance_results(loss_records, appliance, optimizer_name,)
-        _plot_validation_results(validation_records, appliance, optimizer_name,)
+        _plot_appliance_results(loss_records, appliance, optimizer_name)
+        _plot_validation_results(validation_records, appliance, optimizer_name)
 
     
 def _save_optimizer_results(results, appliance, optimizer):

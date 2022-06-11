@@ -39,6 +39,7 @@ import matplotlib
 import conf_eval
 import conf_nilm
 import nilm_seq2point
+import pipeline_util
 
 SEEDS = random.sample(range(0, 100), conf_eval.NUM_RUNS)
 
@@ -68,7 +69,7 @@ def main(_):
             # Problem, NET_CONFIG = predefined conf for META-net, NET_ASSIGNMENTS = None
             mains, appls = nilm_seq2point.preprocess_data(mode='eval', appliance=appliance)
             problem, mains_p, appl_p = nilm_seq2point.model(mode='eval', appliance=appliance) 
-            net_config, net_assignments = util.get_config(conf_eval.PROBLEM, path, net_name='rnn' if 'rnn' in optimizer_name else None, appliance=appliance)
+            net_config, net_assignments = util.get_config(conf_eval.PROBLEM, path, net_name='rnn' if 'rnn' in optimizer_name else None)
 
             step=None
             unroll_len=None
@@ -195,6 +196,9 @@ def main(_):
             tf.reset_default_graph()
 
         _plot_appliance_results(results, result_directory)
+        
+        pipeline_util.log_pipeline_run(mode='eval')
+        
         for opt, best_loss in best_losses.items():
             print('Best final loss achieved for appliance ', appliance, ' by optimizer ', opt, ': ', best_loss)
         

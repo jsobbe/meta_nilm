@@ -33,12 +33,14 @@ import numpy as np
 import util
 import nilm_seq2point
 
+import pipeline_util
+
 flags = tf.flags
 FLAGS = flags.FLAGS
 
 flags.DEFINE_string("save_path", None, "Path for saved meta-optimizer.")
 
-flags.DEFINE_integer("num_epochs", 500, "Number of training epochs.")
+flags.DEFINE_integer("num_epochs", 200, "Number of training epochs.")
 flags.DEFINE_integer("evaluation_period", 50, "Evaluation period.")
 flags.DEFINE_integer("evaluation_epochs", 5, "Number of evaluation epochs.")
 flags.DEFINE_integer("num_steps", 150, "Number of optimization steps per epoch.")
@@ -89,8 +91,8 @@ def main(_):
 
     # Problem.
     net_config, net_assignments = util.get_config(FLAGS.problem, net_name='rnn')
-    mains, appls, size = nilm_seq2point.preprocess_data(mode='train', appliance='fridge')
-    problem = nilm_seq2point.model(mode='train', appliance='fridge', mains=mains, appls=appls, size=size) 
+    mains, appls = nilm_seq2point.preprocess_data(mode='train', appliance='fridge')
+    problem, mains_p, appl_p = nilm_seq2point.model(mode='train', appliance='fridge') 
 
     # Optimizer setup.
     optimizer = meta.MetaOptimizer(FLAGS.num_mt, FLAGS.beta1, FLAGS.beta2, **net_config)
@@ -165,7 +167,8 @@ def main(_):
                                             assign_func=assign_func,
                                             var_x=var_x,
                                             step=seq_step,
-                                            unroll_len=FLAGS.unroll_length)
+                                            unroll_len=FLAGS.unroll_length, 
+                                            feed_dict={mains_p:mains, appl_p:appls})
             else:
                 data_e = data_mt.get_data(task_i, sess, num_unrolls_cur, assign_func, FLAGS.rd_scale_bound,
                                         if_scale=FLAGS.if_scale, mt_k=FLAGS.k)
@@ -181,7 +184,8 @@ def main(_):
                                             task_i=task_i,
                                             data=data_e,
                                             label_pl=mt_labels[task_i],
-                                            input_pl=mt_inputs[task_i])
+                                            input_pl=mt_inputs[task_i], 
+                                            feed_dict={mains_p:mains, appl_p:appls})
             print('Finished EPOCH: ', e, ' with step: ', seq_step, ' and unroll len: ', FLAGS.unroll_length)
             print ("training_loss={}".format(cost))
 
@@ -198,7 +202,8 @@ def main(_):
                     time, cost = util.run_epoch(sess, cost_op, [update], reset,
                                                 num_unrolls_eval_cur,
                                                 step=seq_step,
-                                                unroll_len=FLAGS.unroll_length)
+                                                unroll_len=FLAGS.unroll_length, 
+                                                feed_dict={mains_p:mains, appl_p:appls})
                     eval_cost += cost
 
                 if FLAGS.if_cl:
@@ -264,8 +269,11 @@ def main(_):
 #             v.numpy().save('./models/nilm_model_weights.npy')
 #         tf.train.Saver().save(sess, './modesl/nilm_model')
 
-        print ("total time = {}s...".format(timer() - start_time))
-
+        run_time = timer() - start_time
+        pipeline_util.log_pipeline_run(mode='train')
+        print ("total time = {}s...".format(run_time))
+        
+        
 
 if __name__ == "__main__":
     tf.app.run()
