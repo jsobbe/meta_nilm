@@ -166,9 +166,8 @@ def _get_net_per_layer_type(path, net_name):
     
 
 
-def get_config(problem_name, path=None, net_name=None):
+def get_config(problem_name, path=None, net_name=None, shared_net=True):
   """Returns problem configuration."""
-  shared_net = True if net_name == 'rnn' else conf_nilm.SHARED_NET
   print('Load config for path ', path, ', net name ', net_name)
 # ----------------------- RELEVANT -------------------------
   if problem_name == "nilm_seq": 

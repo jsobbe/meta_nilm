@@ -1,19 +1,14 @@
-SAVE_PATH = "./meta/models/_meta/"
+SAVE_PATH = "./meta/models/_meta/dm/"
 OUTPUT_PATH = "./meta/results/0_train/"
 
 # General training/model choices
 PROBLEM = "nilm_seq"
-OPTIMIZERS = [
-    #'dm', 
-    #'dm_e', 
-    'rnnprop',
-    #'rnnprop_e'
-]
+
 APPLIANCES = [
     'fridge', 
     #'washing machine', 
-    #'oven', 
-    #'microwave'
+    #'microwave', 
+    #'dish washer'
 ]
 
 # Enhanced training
@@ -21,10 +16,10 @@ USE_IMITATION = False
 USE_CURRICULUM = False
 
 # Training parameters
-NUM_EPOCHS = 400
-VALIDATION_PERIOD = 50
+NUM_EPOCHS = 1000
+VALIDATION_PERIOD = 100
 VALIDATION_EPOCHS = 5
-NUM_STEPS = 150
+NUM_STEPS = 500
 UNROLL_LENGTH = 20
 LEARNING_RATE = 0.001
 SECOND_DERIVATIVES = False
@@ -39,6 +34,7 @@ BETA1 = 0.95
 BETA2 = 0.95
 
 # DM parameters
+SHARED_NET = False
 
 # Curriculum parameters
 MIN_NUM_EVAL = 3

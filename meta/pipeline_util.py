@@ -3,11 +3,12 @@ import conf_eval
 import conf_train
 
 import pandas as pd
+import datetime
 
 PATH = './meta/logs/runs/'
 
 # TODO datasets
-def log_pipeline_run(mode, optimizer=None, runtime=None, final_cost=None, result=None):
+def log_pipeline_run(mode, optimizer=None, runtime=None, final_loss=None, avg_loss=None, result=None):
     try:
         df = pd.read_pickle(PATH + 'log_' + mode + '.pkl')
     except FileNotFoundError:
@@ -22,12 +23,15 @@ def log_pipeline_run(mode, optimizer=None, runtime=None, final_cost=None, result
     
     if runtime:
         log['runtime'] = runtime
-    if final_cost:
-        log['final cost'] = final_cost
+    if final_loss:
+        log['final loss'] = final_loss
+    if avg_loss:
+        log['avg loss'] = avg_loss
     if optimizer:
         log['optimizer'] = optimizer
     if result:
         log['result'] = result
+    log['date'] = datetime.datetime.now().strftime("%c")
         
     df = df.append(log, ignore_index=True)
     df.to_pickle(PATH + 'log_' + mode + '.pkl')
@@ -42,7 +46,9 @@ def get_meta_training_log():
                         'unroll len':conf_train.UNROLL_LENGTH,
                        'learn_rate':conf_train.LEARNING_RATE,
                        'use imitation':conf_train.USE_IMITATION,
-                       'use curriculum':conf_train.USE_CURRICULUM
+                       'use curriculum':conf_train.USE_CURRICULUM,
+                       'shared net':conf_train.SHARED_NET,
+                       'data':conf_nilm.DATASETS_TRAIN
                       }
     experiment_meta.update(get_nilm_model_log())
     return experiment_meta
@@ -53,7 +59,8 @@ def get_meta_evaluation_log():
                        'steps':conf_eval.NUM_STEPS,
                        'appliances':','.join(conf_eval.APPLIANCES), 
                         'number of runs':conf_eval.NUM_RUNS,
-                       'learn_rate':conf_eval.LEARNING_RATE
+                       'learn_rate':conf_eval.LEARNING_RATE,
+                       'data':conf_nilm.DATASETS_EVAL
                       }
     experiment_meta.update(get_nilm_model_log())
     return experiment_meta
@@ -64,7 +71,8 @@ def get_nilm_testing_log():
                        'steps':conf_nilm.NUM_STEPS, 
                        'metrics':','.join(conf_nilm.METRICS), 
                         'unroll len':conf_nilm.UNROLL_LENGTH,
-                       'learn_rate':conf_nilm.LEARNING_RATE
+                       'learn_rate':conf_nilm.LEARNING_RATE,
+                       'data':conf_nilm.DATASETS_NILM
                       }
     experiment_meta.update(get_nilm_model_log())
     return experiment_meta
@@ -78,6 +86,5 @@ def get_nilm_model_log():
                        'batch size':conf_nilm.BATCH_SIZE,
                        'batch norm':conf_nilm.BATCH_NORM,
                        'art aggregate':conf_nilm.ARTIFICIAL_AGGREGATE,
-                       'shared net':conf_nilm.SHARED_NET,
-                       'preprocessing':conf_nilm.PREPROCESSING,
+                       'preprocessing':conf_nilm.PREPROCESSING
     }

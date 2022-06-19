@@ -54,14 +54,16 @@ def preprocess_data(mode="train", appliance=None):
     # mains is currently list of df with many windows
     # Convert list of dataframes to a single tensor
     mains_list = []
-    for main_df in mains:
-        if not main_df.empty:
-            mains_list.append(main_df.to_numpy())
+    main_df = pd.concat(mains, axis=0)
+    mains_np = main_df.to_numpy().squeeze()
 
     appls_list = []
-    for appl_df in appls:
-        appls_list.append(appl_df.to_numpy())
-    return np.asarray(mains_list).squeeze(), np.asarray(appls_list).squeeze()
+    appl_df = pd.concat(appls, axis=0)
+    appl_np = appl_df.to_numpy().squeeze()
+    print("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
+    print(appl_np)
+    print("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
+    return mains_np, appl_np
 
 def get_mains_and_subs_train(datasets, appliance_name):
     power = conf_nilm.POWER
@@ -74,7 +76,7 @@ def get_mains_and_subs_train(datasets, appliance_name):
     train_mains = []
     train_submeters = []
     for dataset in datasets:
-        print("Loading data for ",dataset, " dataset")
+        print("Loading data for ", dataset, " dataset")
         train=DataSet(datasets[dataset]['path'])
         for building in datasets[dataset]['buildings']:
             print("Loading building ... ",building)
@@ -89,9 +91,13 @@ def get_mains_and_subs_train(datasets, appliance_name):
             # TODO does meta expect a different format here with indeces?
 
             # get and append all single appliance dfs
-            print("Loading appliance ... ", appliance_name)
-            appliance_df = next(train.buildings[building].elec[appliance_name].load(
-                physical_quantity='power', ac_type=power['appliance'], sample_period=sample_period))
+            print("Loading appliance ", appliance_name, " for house ", building, "...")
+            #print("Found meters: ", str(train.buildings[building].elec))
+            try:
+                appliance_df = next(train.buildings[building].elec[appliance_name].load(
+                    physical_quantity='power', ac_type=power['appliance'], sample_period=sample_period))
+            except KeyError:
+                continue
             appliance_df = appliance_df[[list(appliance_df.columns)[0]]] # TODO support for multiple appliances?
 
             if drop_nans:
@@ -105,7 +111,6 @@ def get_mains_and_subs_train(datasets, appliance_name):
 
             train_mains.append(train_df)
             train_submeters.append(appliance_df)
-
     return train_mains,train_submeters
 
 def _dropna(mains_df, appliance_df):
@@ -142,31 +147,15 @@ def call_preprocessing(mains_lst, submeters_lst, window_size):
         new_mains = np.array([new_mains[i:i + n] for i in range(len(new_mains) - n + 1)])
 #         print(str(new_mains))
         new_mains = (new_mains - mains_mean) / mains_std
-        print('Mains mean after preprocessing: ', np.mean(new_mains))
-        print('Mains std after preprocessing: ', np.std(new_mains))
-        print('Mains max after preprocessing: ', np.max(new_mains))
-        print('Mains min after preprocessing: ', np.min(new_mains), ' \n')
         mains_df_list.append(pd.DataFrame(new_mains))
         
     appliance_list = []
     if submeters_lst:
-        # Appliances don't need to be processed, when evaluating the nilm model
         app_mean, app_std = _get_mean_and_std(submeters_lst)
-        print('Mean in apps data: ', app_mean)
-        print('Std in apps data: ', app_std)
-        print('Max in apps data: ', np.max(np.array(pd.concat(submeters_lst,axis=0))))
-        print('Min in apps data: ', np.min(np.array(pd.concat(submeters_lst,axis=0))))
         for app_df in submeters_lst:
             new_app_readings = app_df.values.reshape((-1, 1))
-            # This is for choosing windows
             new_app_readings = (new_app_readings - app_mean) / app_std
-            # Return as a list of dataframe
             appliance_list.append(pd.DataFrame(new_app_readings))
-            print('Apps mean data after preprocessing: ', np.mean(new_app_readings))
-            print('Apps std data after preprocessing: ', np.std(new_app_readings))
-            print('Apps max data after preprocessing: ', np.max(new_app_readings))
-            print('Apps min data after preprocessing: ', np.min(new_app_readings))
-    print("< END PREPROCESSING > \n")
     
     return mains_df_list, appliance_list
 
@@ -213,7 +202,7 @@ def model(appliance='fridge', optimizer="L2L", mode="train", model_path=None, ba
             indices_t = tf.random_uniform([batch_size], 0, tf.size(appls), tf.int32)
 
             mains_batch = tf.gather(mains, indices_t, axis = 0)
-            print('Shape after gather: ', mains_batch.get_shape())
+           # print('Shape after gather: ', mains_batch.get_shape())
             output = tf.squeeze(network_seq(mains_batch))
             appl_batch = tf.gather(appls, indices_t, axis = 0)
             return _mse(targets=appl_batch, outputs=output), appl_batch, output
@@ -242,7 +231,7 @@ def model(appliance='fridge', optimizer="L2L", mode="train", model_path=None, ba
                                           shape=[filter_size, n_channels, output_channels],
                                           dtype=tf.float32,
                                           initializer=tf.random_normal_initializer(stddev=0.01))
-                print('Weights for ', name, ': ', str(kernel1))
+                #print('Weights for ', name, ': ', str(kernel1))
                 # init bias
                 biases1 = tf.get_variable('biases', [output_channels], 
                                            dtype=tf.float32,
@@ -252,7 +241,7 @@ def model(appliance='fridge', optimizer="L2L", mode="train", model_path=None, ba
             inputs = tf.nn.bias_add(inputs, biases1)
             if batch_norm:
                 inputs = tf.layers.batch_normalization(inputs, training=mode=='train')# TODO necessary?
-        inputs = tf.nn.relu(inputs)
+            inputs = tf.nn.relu(inputs)
         return inputs
         
     def dense_layer(inputs, units, name, relu=False):
@@ -273,17 +262,17 @@ def model(appliance='fridge', optimizer="L2L", mode="train", model_path=None, ba
                                       shape=[fc_shape2, units],
                                       dtype=tf.float32,
                                       initializer=tf.random_normal_initializer(stddev=0.01))
-                print('Weights for ', name, ': ', str(weights))
+                #print('Weights for ', name, ': ', str(weights))
                 # Initialize constant biases and save in fc_bias
                 bias = tf.get_variable("biases",
                                    shape=[units],
                                    dtype=tf.float32,
                                    initializer=tf.constant_initializer(0.0))
-        # add dense layer with weights, biases and the relu activation function
-        if relu:
-            inputs = tf.nn.relu(tf.nn.bias_add(tf.matmul(inputs, weights), bias))
-        else:
-            inputs = tf.nn.bias_add(tf.matmul(inputs, weights), bias)
+            # add dense layer with weights, biases and the relu activation function
+            if relu:
+                inputs = tf.nn.relu(tf.nn.bias_add(tf.matmul(inputs, weights), bias))
+            else:
+                inputs = tf.nn.bias_add(tf.matmul(inputs, weights), bias)
         return inputs
         
     # TODO rework based on paper and nilm implementation

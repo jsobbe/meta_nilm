@@ -425,11 +425,6 @@ class MetaOptimizer(object):
 
     loss = tf.reduce_sum(fx_array.stack(), name="loss")
     
-    with tf.Session() as sess:
-        gt_final = sess.run(gt)
-        print('Start ground truth appliance data has mean of ' + 
-              str(np.mean(gt_final)) + ' and std of ' + str(np.std(gt_final)) + '.')
-
     ##################################
     ### multi task learning losses ###
     ##################################

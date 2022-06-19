@@ -51,8 +51,14 @@ def main(_):
     np.set_printoptions(precision=3)
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
+    
+    appliance_data = {}
         
     for appliance in conf_eval.APPLIANCES:
+        appliance_data[appliance] = {}
+        appliance_data[appliance]['mains'], appliance_data[appliance]['appls'] = nilm_seq2point.preprocess_data(mode='eval', appliance=appliance)
+        print('For {} found {}/{} data entries.'.format(appliance, appliance_data[appliance]['mains'].size, appliance_data[appliance]['appls'].size))
+        
         results = {}
         models = {}
         best_losses = {}
@@ -67,7 +73,6 @@ def main(_):
             num_unrolls = conf_eval.NUM_STEPS
 
             # Problem, NET_CONFIG = predefined conf for META-net, NET_ASSIGNMENTS = None
-            mains, appls = nilm_seq2point.preprocess_data(mode='eval', appliance=appliance)
             problem, mains_p, appl_p = nilm_seq2point.model(mode='eval', appliance=appliance) 
             net_config, net_assignments = util.get_config(conf_eval.PROBLEM, path, net_name='rnn' if 'rnn' in optimizer_name else None)
 
@@ -107,6 +112,16 @@ def main(_):
                 optimizer_reset = tf.variables_initializer(optimizer.get_slot_names())
                 update = optimizer.minimize(cost_op)
                 reset = [problem_reset, optimizer_reset]
+                
+            elif optimizer_name == "adadelta":
+                cost_op, gt, pred = problem()
+                problem_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)
+                problem_reset = tf.variables_initializer(problem_vars)
+
+                optimizer = tf.train.AdadeltaOptimizer(conf_eval.LEARNING_RATE)
+                optimizer_reset = tf.variables_initializer(optimizer.get_slot_names())
+                update = optimizer.minimize(cost_op)
+                reset = [problem_reset, optimizer_reset]
 
             elif optimizer_name == "momentum":
                 cost_op, gt, pred = problem()
@@ -125,7 +140,7 @@ def main(_):
                 meta_loss, _, problem_vars, _, gt, pred = optimizer.meta_loss(problem, 1, net_assignments=net_assignments)
                 _, update, reset, cost_op, _ = meta_loss
 
-            elif optimizer_name == "rnn":
+            elif 'rnn' in optimizer_name:
                 if path is None:
                     logging.warning("Evaluating untrained L2L optimizer")
                 optimizer = meta_rnn.MetaOptimizer(conf_eval.BETA_1, conf_eval.BETA_2, **net_config)
@@ -150,11 +165,14 @@ def main(_):
                     total_cost = 0
                     loss_record = []
                     for e in xrange(conf_eval.NUM_EPOCHS):
+                        mains_data = appliance_data[appliance]['mains']
+                        appl_data = appliance_data[appliance]['appls']
+                        
                         # Training.
-                        if optimizer_name == 'rnn':
-                            time, cost, result = util.run_eval_epoch(sess, cost_op, [update], num_unrolls, step=step, unroll_len=unroll_len, feed_dict={mains_p:mains, appl_p:appls})
+                        if 'rnn' in optimizer_name:
+                            time, cost, result = util.run_eval_epoch(sess, cost_op, [update], num_unrolls, step=step, unroll_len=unroll_len, feed_dict={mains_p:mains_data, appl_p:appl_data})
                         else:
-                            time, cost, result = util.run_eval_epoch(sess, cost_op, [update], num_unrolls, feed_dict={mains_p:mains, appl_p:appls})
+                            time, cost, result = util.run_eval_epoch(sess, cost_op, [update], num_unrolls, feed_dict={mains_p:mains_data, appl_p:appl_data})
                         total_time += time
                         total_cost += sum(cost) / num_unrolls
                         loss_record += cost
@@ -179,6 +197,7 @@ def main(_):
 
             _plot_optimizer_results(results[optimizer_name], optimizer_name, result_directory)
             _save_optimizer_results(results[optimizer_name], optimizer_name, appliance)
+            pipeline_util.log_pipeline_run(mode='eval', optimizer=optimizer_name, final_loss = cost[-1], avg_loss=total_cost)
                     #gt_final = sess.run(gt)
                     #print('Final ground truth appliance data has mean of ' + 
                     #      str(np.mean(gt_final)) + ' and std of ' + str(np.std(gt_final)) + '.')
@@ -197,7 +216,6 @@ def main(_):
 
         _plot_appliance_results(results, result_directory)
         
-        pipeline_util.log_pipeline_run(mode='eval')
         
         for opt, best_loss in best_losses.items():
             print('Best final loss achieved for appliance ', appliance, ' by optimizer ', opt, ': ', best_loss)

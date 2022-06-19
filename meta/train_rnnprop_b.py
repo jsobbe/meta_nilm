@@ -38,11 +38,16 @@ import pipeline_util
 import conf_train
 
 
+def get_optimizer_name():
+    return 'rnnprop' if not conf_train.USE_CURRICULUM and not conf_train.USE_IMITATION else 'rnnprop_e'
+
 def main(_):
     
     loss_record = []
     validation_record = []
     appliance_data = {}
+    
+    save_path = conf_train.SAVE_PATH + get_optimizer_name() + '/'
     
     np.set_printoptions(precision=3)
     
@@ -52,23 +57,27 @@ def main(_):
     # Configuration.
     if conf_train.USE_CURRICULUM:
         num_steps = [100, 200, 500, 1000, 1500, 2000, 2500, 3000]
-        num_unrolls = [int(ns / conf_train.unroll_length) for ns in num_steps]
+        num_unrolls = [int(ns / conf_train.UNROLL_LENGTH) for ns in num_steps]
         num_unrolls_eval = num_unrolls[1:]
         curriculum_idx = 0
     else:
         num_unrolls = conf_train.NUM_STEPS // conf_train.UNROLL_LENGTH
 
     # Output path.
-    if conf_train.SAVE_PATH is not None:
-        if not os.path.exists(conf_train.SAVE_PATH):
-            os.mkdir(conf_train.SAVE_PATH)
+    if save_path is not None:
+        if not os.path.exists(save_path):
+            os.mkdir(save_path)
 
     for appl in conf_train.APPLIANCES:
         appliance_data[appl] = {}
         appliance_data[appl]['mains'], appliance_data[appl]['appls'] = nilm_seq2point.preprocess_data(mode='train', appliance=appl)
+        print('For {} found {}/{} data entries.'.format(appl, appliance_data[appl]['mains'].size, appliance_data[appl]['appls'].size))
         
     # Problem.
-    net_config, net_assignments = util.get_config(conf_train.PROBLEM, net_name='rnn')
+    if conf_train.CONTINUE_TRAINING:
+        net_config, net_assignments = util.get_config(conf_train.PROBLEM, save_path + 'rp.l2l-0', net_name='rnn')
+    else:
+        net_config, net_assignments = util.get_config(conf_train.PROBLEM, net_name='rnn')
     problem, mains_p, appl_p = nilm_seq2point.model(mode='train') 
 
     # Optimizer setup.
@@ -84,7 +93,7 @@ def main(_):
     # Data generator for multi-task learning.
     if conf_train.USE_IMITATION:
         data_mt = data_loader(problem, var_x, constants, subsets, scale,
-                              conf_train.OPTIMIZERS, conf_train.UNROLL_LENGTH)
+                              conf_train.MT_OPTIMIZERS, conf_train.UNROLL_LENGTH)
         if conf_train.USE_CURRICULUM:
             mt_ratios = [float(r) for r in conf_train.MT_RATIOS.split()]
 
@@ -113,10 +122,10 @@ def main(_):
         mti = -1
         for e in xrange(conf_train.NUM_EPOCHS):
             appliance = random.choice(list(appliance_data))
-            print('Train model for ', appliance)
             mains_data = appliance_data[appliance]['mains']
             appl_data = appliance_data[appliance]['appls']
             
+            print('Run EPOCH: ', e, ' for model for ', appliance)
             # Pick a task if it's multi-task learning.
             if conf_train.USE_IMITATION:
                 if conf_train.USE_CURRICULUM:
@@ -153,7 +162,7 @@ def main(_):
                                             feed_dict={mains_p:mains_data, appl_p:appl_data})
             else:
                 data_e = data_mt.get_data(task_i, sess, num_unrolls_cur, assign_func, conf_train.RD_SCALE_BOUND,
-                                        if_scale=conf_train.USE_SCALE, mt_k=conf_train.K)
+                                        if_scale=conf_train.USE_SCALE, mt_k=conf_train.K, feed_dict={mains_p:mains_data, appl_p:appl_data})
                 time, cost = util.run_epoch(sess, loss_mt[task_i], [update_mt[task_i], steps_mt[task_i]], reset_mt[task_i],
                                             num_unrolls_cur,
                                             scale=scale,
@@ -182,7 +191,7 @@ def main(_):
 
                 eval_cost = 0
                 for _ in xrange(conf_train.VALIDATION_EPOCHS):
-                    appliance = random.choice(list(appliance_data))
+                    appliance = random.choice(list(appliance_data)) #TODO run for all appls?
                     mains_data = appliance_data[appliance]['mains']
                     appl_data = appliance_data[appliance]['appls']
                     
@@ -203,8 +212,8 @@ def main(_):
                 if not conf_train.USE_CURRICULUM:
                     if eval_cost < best_evaluation:
                         best_evaluation = eval_cost
-                        optimizer.save(sess, conf_train.SAVE_PATH, e + 1)
-                        optimizer.save(sess, conf_train.SAVE_PATH, 0)
+                        optimizer.save(sess, save_path, e + 1)
+                        optimizer.save(sess, save_path, 0)
                         print ("Saving optimizer of epoch {}...".format(e + 1))
                     continue
 
@@ -214,11 +223,11 @@ def main(_):
                     best_evaluation = eval_cost
                     improved = True
                     # save model
-                    optimizer.save(sess, conf_train.SAVE_PATH, curriculum_idx)
-                    optimizer.save(sess, conf_train.SAVE_PATH, 0)
+                    optimizer.save(sess, save_path, curriculum_idx)
+                    optimizer.save(sess, save_path, 0)
                 elif num_eval >= conf_train.MIN_NUM_EVAL and improved:
                     # restore model
-                    optimizer.restore(sess, conf_train.SAVE_PATH, curriculum_idx)
+                    optimizer.restore(sess, save_path, curriculum_idx)
                     num_eval = 0
                     improved = False
                     curriculum_idx += 1
@@ -228,10 +237,15 @@ def main(_):
                     # initial evaluation for next curriculum
                     eval_cost = 0
                     for _ in xrange(conf_train.VALIDATION_EPOCHS):
+                        appliance = random.choice(list(appliance_data)) #TODO run for all appls?
+                        mains_data = appliance_data[appliance]['mains']
+                        appl_data = appliance_data[appliance]['appls']
+                        
                         time, cost = util.run_epoch(sess, cost_op, [update], reset,
                                                     num_unrolls_eval[curriculum_idx],
                                                     step=seq_step,
-                                                    unroll_len=conf_train.UNROLL_LENGTH)
+                                                    unroll_len=conf_train.UNROLL_LENGTH, 
+                                                    feed_dict={mains_p:mains_data, appl_p:appl_data})
                         eval_cost += cost
                     best_evaluation = eval_cost
                     print("epoch={}, num_steps={}, eval loss={}".format(
@@ -241,31 +255,22 @@ def main(_):
                     break
                 validation_record.append(eval_cost)
                     
-            #gt_final = sess.run(gt)
-            #print('Final ground truth appliance data (length=', gt_final.size, ') has mean of ' + 
-            #      str(np.mean(gt_final)) + ' and std of ' + str(np.std(gt_final)) + '.')
-            #pred_final = sess.run(pred)
-            #print('Final predicted appliance data (length=', pred_final.size, ') has mean of ' + 
-            #      str(np.mean(pred_final)) + ' and std of ' + str(np.std(pred_final)) + '.')
-
-            
         run_time = timer() - start_time
         
         _save_results(loss_record)
         _plot_results(loss_record)
         _plot_validation_results(validation_record)
         
-        pipeline_util.log_pipeline_run(mode='train')
+        pipeline_util.log_pipeline_run(mode='train', result=loss_record, final_loss=loss_record[-1], runtime=run_time, optimizer='rnn')
         print ("total time = {}s...".format(run_time))
-        
         
         
     
 def _save_results(results):
-    directory = conf_train.SAVE_PATH
+    directory = conf_train.OUTPUT_PATH
     if not os.path.exists(directory):
         os.mkdir(directory)
-    directory += 'rnn' + '/'
+    directory += get_optimizer_name() + '/'
     if not os.path.exists(directory):
         os.mkdir(directory)
     output_file = '{}/train_loss_record.pickle-{}'.format(directory,conf_train.PROBLEM)
@@ -277,7 +282,7 @@ def _plot_results(results):
     directory = conf_train.OUTPUT_PATH
     if not os.path.exists(directory):
         os.mkdir(directory)
-    directory += 'rnn' + '/'
+    directory += get_optimizer_name() + '/'
     if not os.path.exists(directory):
         os.mkdir(directory)
     
@@ -285,7 +290,7 @@ def _plot_results(results):
     plt.xlabel('Steps')
     plt.ylabel('Loss')
     plt.yscale("log")
-    plt.plot(results, label='rnn', linewidth='2')
+    plt.plot(results, label=get_optimizer_name(), linewidth='2')
     plt.legend()
     plt.savefig(directory + '/loss.png')
     
@@ -294,9 +299,9 @@ def _plot_validation_results(results):
     plt.xlabel('Validation Epochs')
     plt.ylabel('Loss')
     plt.yscale("log")
-    plt.plot(results, label='rnn', linewidth='2')
+    plt.plot(results, label=get_optimizer_name(), linewidth='2')
     plt.legend()
-    plt.savefig(conf_train.OUTPUT_PATH + 'rnn' + '/validation_loss.png')
+    plt.savefig(conf_train.OUTPUT_PATH + get_optimizer_name() + '/validation_loss.png')
         
 
 if __name__ == "__main__":

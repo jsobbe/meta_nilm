@@ -1,17 +1,23 @@
 DATASETS_TRAIN = {'redd':{
     'path': './data/redd.h5',
     'buildings': {
-        2: {'start_time': '2011-04-01', 'end_time': '2011-05-28'}
+        2: {'start_time': '2011-04-01', 'end_time': '2011-05-28'}, 
+        3: {'start_time': '2011-04-01', 'end_time': '2011-05-28'}, 
+        5: {'start_time': '2011-04-01', 'end_time': '2011-05-28'}, 
+        6: {'start_time': '2011-04-01', 'end_time': '2011-05-28'}
     }}}
 DATASETS_EVAL = {'redd':{
     'path': './data/redd.h5',
     'buildings': {
-        1: {'start_time': '2011-04-01', 'end_time': '2011-05-10'}
+        2: {'start_time': '2011-04-01', 'end_time': '2011-05-28'}, 
+        3: {'start_time': '2011-04-01', 'end_time': '2011-05-28'}, 
+        5: {'start_time': '2011-04-01', 'end_time': '2011-05-28'}, 
+        6: {'start_time': '2011-04-01', 'end_time': '2011-05-28'}
     }}}
 DATASETS_TEST = {'redd':{
     'path': './data/redd.h5',
     'buildings': {
-        1: {'start_time': '2011-05-11', 'end_time': '2011-05-30'}
+        1: {'start_time': '2011-04-01', 'end_time': '2011-05-30'}
     }}}
 POWER = {'mains': ['apparent'], 'appliance': ['active']}
 APPLIANCES = ['fridge']
@@ -22,7 +28,6 @@ BATCH_SIZE=128
 ARTIFICIAL_AGGREGATE = False # TODO Check what it does and what is better?
 BATCH_NORM = True # TODO from meta. Does it make sense on top of normalization done by NILMTK?
 PREPROCESSING = True
-SHARED_NET = True
 
 # For NILM evaluation
 METRICS = ['mae', 
@@ -32,10 +37,11 @@ METRICS = ['mae',
 DISPLAY_PRED = True
 OPTIMIZERS = [
     #'dm', 
-    'dme', 
-    'rnn', 
+    #'dme', 
+    #'rnn_days', 
     'adam', 
-    'rmsprop']
+    #'rmsprop'
+]
 
 NILM_VARS = ['conv_1-weights','conv_1-biases',
               'conv_2-weights','conv_2-biases',
