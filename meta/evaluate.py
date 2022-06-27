@@ -52,17 +52,21 @@ def main(_):
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
     
-    appliance_data = {}
-        
     for appliance in conf_eval.APPLIANCES:
-        appliance_data[appliance] = {}
-        appliance_data[appliance]['mains'], appliance_data[appliance]['appls'] = nilm_seq2point.preprocess_data(mode='eval', appliance=appliance)
-        print('For {} found {}/{} data entries.'.format(appliance, appliance_data[appliance]['mains'].size, appliance_data[appliance]['appls'].size))
+        appliance_data = {}
+        try:
+            appliance_data['mains'], appliance_data['appls'] = nilm_seq2point.preprocess_data(mode='eval', appliance=appliance)
+        except KeyError:
+            print('no data found for appliance ', appliance)
+            continue
+        print('For {} found {}/{} data entries.'.format(appliance, appliance_data['mains'].size, appliance_data['appls'].size))
         
         results = {}
         models = {}
         best_losses = {}
-        for optimizer_name, path in conf_eval.OPTIMIZERS.items():
+        for optimizer_name, data in conf_eval.OPTIMIZERS.items():
+            path = data['path'] if '_' in optimizer_name else None
+            shared_net = data['shared_net'] if '_' in optimizer_name else None
             result_directory = conf_eval.OUTPUT_PATH + appliance + '/'
             if not os.path.exists(result_directory):
                 os.mkdir(result_directory)
@@ -73,8 +77,9 @@ def main(_):
             num_unrolls = conf_eval.NUM_STEPS
 
             # Problem, NET_CONFIG = predefined conf for META-net, NET_ASSIGNMENTS = None
-            problem, mains_p, appl_p = nilm_seq2point.model(mode='eval', appliance=appliance) 
-            net_config, net_assignments = util.get_config(conf_eval.PROBLEM, path, net_name='rnn' if 'rnn' in optimizer_name else None)
+            problem, mains_p, appl_p = nilm_seq2point.model(mode='eval', appliance=appliance, optimizer=optimizer_name) 
+            if '_' in optimizer_name:
+                net_config, net_assignments = util.get_config(conf_eval.PROBLEM, path, net_name='rnn' if 'rnn' in optimizer_name else None, shared_net=shared_net)
 
             step=None
             unroll_len=None
@@ -83,7 +88,7 @@ def main(_):
             print('------------------------------------------------')
 
             # Optimizer setup.
-            if optimizer_name == "adam":
+            if "adam" in optimizer_name:
                 cost_op, gt, pred = problem()
                 problem_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)
                 problem_reset = tf.variables_initializer(problem_vars)
@@ -92,8 +97,18 @@ def main(_):
                 optimizer_reset = tf.variables_initializer(optimizer.get_slot_names())
                 update = optimizer.minimize(cost_op)
                 reset = [problem_reset, optimizer_reset]
+                
+            elif "sgd" in optimizer_name:
+                cost_op, gt, pred = problem()
+                problem_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)
+                problem_reset = tf.variables_initializer(problem_vars)
 
-            elif optimizer_name == "rmsprop":
+                optimizer = tf.train.GradientDescentOptimizer(conf_eval.LEARNING_RATE)
+                optimizer_reset = tf.variables_initializer(optimizer.get_slot_names())
+                update = optimizer.minimize(cost_op)
+                reset = [problem_reset, optimizer_reset]
+
+            elif "rmsprop" in optimizer_name:
                 cost_op, gt, pred = problem()
                 problem_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)
                 problem_reset = tf.variables_initializer(problem_vars)
@@ -103,7 +118,7 @@ def main(_):
                 update = optimizer.minimize(cost_op)
                 reset = [problem_reset, optimizer_reset]
 
-            elif optimizer_name == "adagrad":
+            elif "adagrad" in optimizer_name:
                 cost_op, gt, pred = problem()
                 problem_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)
                 problem_reset = tf.variables_initializer(problem_vars)
@@ -113,7 +128,7 @@ def main(_):
                 update = optimizer.minimize(cost_op)
                 reset = [problem_reset, optimizer_reset]
                 
-            elif optimizer_name == "adadelta":
+            elif "adadelta" in optimizer_name:
                 cost_op, gt, pred = problem()
                 problem_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)
                 problem_reset = tf.variables_initializer(problem_vars)
@@ -123,7 +138,7 @@ def main(_):
                 update = optimizer.minimize(cost_op)
                 reset = [problem_reset, optimizer_reset]
 
-            elif optimizer_name == "momentum":
+            elif "momentum" in optimizer_name:
                 cost_op, gt, pred = problem()
                 problem_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)
                 problem_reset = tf.variables_initializer(problem_vars)
@@ -133,16 +148,16 @@ def main(_):
                 update = optimizer.minimize(cost_op)
                 reset = [problem_reset, optimizer_reset]
 
-            elif optimizer_name == "dm" or optimizer_name == 'dme':
+            elif "dm" in optimizer_name:
                 if path is None:
-                    logging.warning("Evaluating untrained L2L optimizer")
+                    print("Evaluating untrained L2L optimizer")
                 optimizer = meta_dm.MetaOptimizer(**net_config)
                 meta_loss, _, problem_vars, _, gt, pred = optimizer.meta_loss(problem, 1, net_assignments=net_assignments)
                 _, update, reset, cost_op, _ = meta_loss
 
             elif 'rnn' in optimizer_name:
                 if path is None:
-                    logging.warning("Evaluating untrained L2L optimizer")
+                    print("Evaluating untrained L2L optimizer")
                 optimizer = meta_rnn.MetaOptimizer(conf_eval.BETA_1, conf_eval.BETA_2, **net_config)
                 meta_loss, _, problem_vars, step, gt, pred = optimizer.meta_loss(problem, 1, net_assignments=net_assignments)
                 _, update, reset, cost_op, _ = meta_loss
@@ -152,9 +167,10 @@ def main(_):
                 raise ValueError("{} is not a valid optimizer".format(optimizer_name))
 
             # Run evaluation multiple times
-            for i in xrange(conf_eval.NUM_RUNS):
-                tf.set_random_seed(SEEDS[i])
-                print('\nEvaluation iteration #', i, ' with seed=', SEEDS[i])
+            for seed in conf_eval.SEEDS:
+                tf.set_random_seed(seed)
+                random.seed(seed)
+                print('\nEvaluation with seed=', seed)
 
                 with ms.MonitoredSession() as sess:
                     sess.run(reset)
@@ -165,14 +181,14 @@ def main(_):
                     total_cost = 0
                     loss_record = []
                     for e in xrange(conf_eval.NUM_EPOCHS):
-                        mains_data = appliance_data[appliance]['mains']
-                        appl_data = appliance_data[appliance]['appls']
+                        mains_data = appliance_data['mains']
+                        appl_data = appliance_data['appls']
                         
                         # Training.
                         if 'rnn' in optimizer_name:
-                            time, cost, result = util.run_eval_epoch(sess, cost_op, [update], num_unrolls, step=step, unroll_len=unroll_len, feed_dict={mains_p:mains_data, appl_p:appl_data})
+                            time, cost, result, nilm_vars = util.run_eval_epoch(sess, cost_op, [update], num_unrolls, step=step, unroll_len=unroll_len, feed_dict={mains_p:mains_data, appl_p:appl_data})
                         else:
-                            time, cost, result = util.run_eval_epoch(sess, cost_op, [update], num_unrolls, feed_dict={mains_p:mains_data, appl_p:appl_data})
+                            time, cost, result, nilm_vars = util.run_eval_epoch(sess, cost_op, [update], num_unrolls, feed_dict={mains_p:mains_data, appl_p:appl_data})
                         total_time += time
                         total_cost += sum(cost) / num_unrolls
                         loss_record += cost
@@ -180,15 +196,15 @@ def main(_):
 
                     print('avg_cost:', total_cost)
                     print('loss_record:', loss_record)
-                    print('final_loss:', cost[-1])
+                    print('final_loss:', cost[-1], flush=True)
 
                     results[optimizer_name].append(np.array(loss_record))
 
                     if cost[-1] < best_losses[optimizer_name]:
                         best_losses[optimizer_name] = cost[-1]
-                        nilm_vars=[]
-                        for var in problem_vars:
-                            nilm_vars.append(sess.run(var))
+#                         nilm_vars=[]
+#                         for var in problem_vars:
+#                             nilm_vars.append(sess.run(var, feed_dict={mains_p:mains_data, appl_p:appl_data}))
                         models[optimizer_name] = nilm_vars
 
                     # Results.

@@ -26,7 +26,6 @@ import numpy as np
 from six.moves import xrange
 
 import problems
-import nilm_seq2point
 import conf_nilm
 import random
 
@@ -70,11 +69,10 @@ def run_epoch(sess, cost_op, ops, reset, num_unrolls,
             feed_dict[step] = i*unroll_len+1
         result = sess.run([cost_op] + ops, feed_dict=feed_dict)
         cost = result[0]
-  else: # if multitask learning. But how is task selected?
+  else:
       assert data is not None
       assert input_pl is not None
       assert label_pl is not None
-      feed_dict = {}
       for ri in xrange(num_unrolls):
           for pl, dat in zip(label_pl, data["labels"][ri]):
               feed_dict[pl] = dat
@@ -104,7 +102,7 @@ def run_eval_epoch(sess, cost_op, ops, num_unrolls, step=None, unroll_len=None, 
     result = sess.run([cost_op] + ops, feed_dict=feed_dict)
     cost = result[0]
     total_cost.append(cost)
-  return timer() - start, total_cost, result[-1]
+  return timer() - start, total_cost, result[-1], result[1][-1:]
 
 
 def print_stats(header, total_error, total_time, n):

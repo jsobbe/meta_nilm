@@ -38,16 +38,13 @@ import pipeline_util
 import conf_train
 
 
-def get_optimizer_name():
-    return 'rnnprop' if not conf_train.USE_CURRICULUM and not conf_train.USE_IMITATION else 'rnnprop_e'
-
 def main(_):
     
     loss_record = []
     validation_record = []
     appliance_data = {}
     
-    save_path = conf_train.SAVE_PATH + get_optimizer_name() + '/'
+    save_path = conf_train.SAVE_PATH + conf_train.OPTIMIZER_NAME + '/'
     
     np.set_printoptions(precision=3)
     
@@ -69,8 +66,13 @@ def main(_):
             os.mkdir(save_path)
 
     for appl in conf_train.APPLIANCES:
-        appliance_data[appl] = {}
-        appliance_data[appl]['mains'], appliance_data[appl]['appls'] = nilm_seq2point.preprocess_data(mode='train', appliance=appl)
+        try:
+            appliance_data[appl] = {}
+            appliance_data[appl]['mains'], appliance_data[appl]['appls'] = nilm_seq2point.preprocess_data(mode='train', appliance=appl)
+        except KeyError:
+            print('no data found for appliance ', appl)
+            appliance_data.pop(appl)
+            continue
         print('For {} found {}/{} data entries.'.format(appl, appliance_data[appl]['mains'].size, appliance_data[appl]['appls'].size))
         
     # Problem.
@@ -116,7 +118,8 @@ def main(_):
         # Start.
         start_time = timer()
         tf.get_default_graph().finalize()
-        best_evaluation = float("inf")
+        best_evaluation_sum = float("inf")
+        best_evaluation_median = float("inf")
         num_eval = 0
         improved = False
         mti = -1
@@ -179,7 +182,7 @@ def main(_):
                                             feed_dict={mains_p:mains_data, appl_p:appl_data})
             print('Finished EPOCH: ', e, ' with step: ', seq_step, ' and unroll len: ', conf_train.UNROLL_LENGTH)
             loss_record.append(cost)
-            print ("training_loss={}".format(cost))
+            print ("training_loss={}".format(cost), flush=True)
 
             # Evaluation.
             if (e + 1) % conf_train.VALIDATION_PERIOD == 0:
@@ -190,6 +193,7 @@ def main(_):
                 num_eval += 1
 
                 eval_cost = 0
+                eval_costs = []
                 for _ in xrange(conf_train.VALIDATION_EPOCHS):
                     appliance = random.choice(list(appliance_data)) #TODO run for all appls?
                     mains_data = appliance_data[appliance]['mains']
@@ -201,17 +205,19 @@ def main(_):
                                                 unroll_len=conf_train.UNROLL_LENGTH, 
                                                 feed_dict={mains_p:mains_data, appl_p:appl_data})
                     eval_cost += cost
+                    eval_costs.append(cost)
 
                 if conf_train.USE_CURRICULUM:
                     num_steps_cur = num_steps[curriculum_idx]
                 else:
                     num_steps_cur = conf_train.NUM_STEPS
-                print ("epoch={}, num_steps={}, eval_loss={}".format(
-                    e, num_steps_cur, eval_cost / conf_train.VALIDATION_EPOCHS), flush=True)
+                print ("epoch={}, num_steps={}, val_loss={}, val_median={}".format(
+                    e, num_steps_cur, eval_cost / conf_train.VALIDATION_EPOCHS, np.median(eval_costs)), flush=True)
 
                 if not conf_train.USE_CURRICULUM:
-                    if eval_cost < best_evaluation:
-                        best_evaluation = eval_cost
+                    if np.median(eval_costs) < best_evaluation_median:
+                        best_evaluation_sum = eval_cost
+                        best_evaluation_median = np.median(eval_costs)
                         optimizer.save(sess, save_path, e + 1)
                         optimizer.save(sess, save_path, 0)
                         print ("Saving optimizer of epoch {}...".format(e + 1))
@@ -219,12 +225,14 @@ def main(_):
 
                 # Curriculum learning.
                 # update curriculum
-                if eval_cost < best_evaluation:
+                if np.median(eval_costs) < best_evaluation_median:
                     best_evaluation = eval_cost
+                    best_evaluation_median = np.median(eval_costs)
                     improved = True
                     # save model
                     optimizer.save(sess, save_path, curriculum_idx)
                     optimizer.save(sess, save_path, 0)
+                    print('Validation result improved!')
                 elif num_eval >= conf_train.MIN_NUM_EVAL and improved:
                     # restore model
                     optimizer.restore(sess, save_path, curriculum_idx)
@@ -233,9 +241,11 @@ def main(_):
                     curriculum_idx += 1
                     if curriculum_idx >= len(num_unrolls):
                         curriculum_idx = -1
+                        print('Reached last curriculum')
 
                     # initial evaluation for next curriculum
                     eval_cost = 0
+                    eval_costs = []
                     for _ in xrange(conf_train.VALIDATION_EPOCHS):
                         appliance = random.choice(list(appliance_data)) #TODO run for all appls?
                         mains_data = appliance_data[appliance]['mains']
@@ -248,8 +258,9 @@ def main(_):
                                                     feed_dict={mains_p:mains_data, appl_p:appl_data})
                         eval_cost += cost
                     best_evaluation = eval_cost
-                    print("epoch={}, num_steps={}, eval loss={}".format(
-                        e, num_steps[curriculum_idx], eval_cost / conf_train.VALIDATION_EPOCHS), flush=True)
+                    best_evaluation_median = np.median(eval_costs)
+                    print("epoch={}, num_steps={}, val_loss={}, val_median={}".format(
+                        e, num_steps[curriculum_idx], eval_cost / conf_train.VALIDATION_EPOCHS, np.median(eval_costs)), flush=True)
                 elif num_eval >= conf_train.MIN_NUM_EVAL and not improved:
                     print ("no improve during curriculum {} --> stop".format(curriculum_idx))
                     break
@@ -270,10 +281,10 @@ def _save_results(results):
     directory = conf_train.OUTPUT_PATH
     if not os.path.exists(directory):
         os.mkdir(directory)
-    directory += get_optimizer_name() + '/'
+    directory += conf_train.OPTIMIZER_NAME + '/'
     if not os.path.exists(directory):
         os.mkdir(directory)
-    output_file = '{}/train_loss_record.pickle-{}'.format(directory,conf_train.PROBLEM)
+    output_file = '{}train_loss_record.pickle-{}'.format(directory,conf_train.PROBLEM)
     with open(output_file, 'wb') as l_record:
         pickle.dump(results, l_record)
     print("Saving evaluate loss record {}".format(output_file))
@@ -282,7 +293,7 @@ def _plot_results(results):
     directory = conf_train.OUTPUT_PATH
     if not os.path.exists(directory):
         os.mkdir(directory)
-    directory += get_optimizer_name() + '/'
+    directory += conf_train.OPTIMIZER_NAME + '/'
     if not os.path.exists(directory):
         os.mkdir(directory)
     
@@ -290,7 +301,8 @@ def _plot_results(results):
     plt.xlabel('Steps')
     plt.ylabel('Loss')
     plt.yscale("log")
-    plt.plot(results, label=get_optimizer_name(), linewidth='2')
+    #plt.plot(results, label=conf_train.OPTIMIZER_NAME, linewidth='2')
+    plt.plot(np.convolve(results, np.ones(10)/10, mode='valid'), label='Moving average (10)', linewidth='2')
     plt.legend()
     plt.savefig(directory + '/loss.png')
     
@@ -299,9 +311,9 @@ def _plot_validation_results(results):
     plt.xlabel('Validation Epochs')
     plt.ylabel('Loss')
     plt.yscale("log")
-    plt.plot(results, label=get_optimizer_name(), linewidth='2')
+    plt.plot(results, label=conf_train.OPTIMIZER_NAME, linewidth='2')
     plt.legend()
-    plt.savefig(conf_train.OUTPUT_PATH + get_optimizer_name() + '/validation_loss.png')
+    plt.savefig(conf_train.OUTPUT_PATH + conf_train.OPTIMIZER_NAME + '/validation_loss.png')
         
 
 if __name__ == "__main__":

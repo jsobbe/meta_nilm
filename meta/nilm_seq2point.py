@@ -49,8 +49,9 @@ def preprocess_data(mode="train", appliance=None):
     load = False
 
     mains, subs = get_mains_and_subs_train(data, appliance)
+    if not mains:
+        raise KeyError
     mains, appls = call_preprocessing(mains, subs, window_size)
-    
     # mains is currently list of df with many windows
     # Convert list of dataframes to a single tensor
     mains_list = []
@@ -96,9 +97,10 @@ def get_mains_and_subs_train(datasets, appliance_name):
             try:
                 appliance_df = next(train.buildings[building].elec[appliance_name].load(
                     physical_quantity='power', ac_type=power['appliance'], sample_period=sample_period))
-            except KeyError:
+                appliance_df = appliance_df[[list(appliance_df.columns)[0]]] # TODO support for multiple appliances?
+            except (KeyError, IndexError) as e:
+                print('No appliance data found for specified timestamp...')
                 continue
-            appliance_df = appliance_df[[list(appliance_df.columns)[0]]] # TODO support for multiple appliances?
 
             if drop_nans:
                 train_df, appliance_df = _dropna(train_df, appliance_df)

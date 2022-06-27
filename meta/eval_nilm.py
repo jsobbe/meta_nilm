@@ -9,6 +9,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import datetime
+import pipeline_util
 
 def _dropna(mains_df, appliance_dfs=[]):
     """
@@ -160,14 +161,9 @@ class nilm_eval():
                     valid_predictions = np.where(valid_predictions > 0, valid_predictions, 0)
                     df = pd.Series(valid_predictions)
                     disggregation_dict[optimizer + '_' + appliance] = df
+                    pipeline_util.log_pipeline_run(mode='test', optimizer=optimizer, metrics=self.errors)
         results = pd.DataFrame(disggregation_dict, dtype='float32')
         test_predictions.append(results)
-
-            #print('MADE PREDICTION:')
-            #print('type: ', type(test_predictions))
-            #print('len: ', len(test_predictions))
-            #print('content: ', str(test_predictions))
-        # TODO create nilm_seq2point.get_mains_and_subs_test for new method
 
         # It might not have time stamps sometimes due to neural nets
         # It has the readings for all the appliances
@@ -254,6 +250,8 @@ class nilm_eval():
                 #plt.yscale("log")
                 plt.savefig(conf_nilm.OUTPUT_PATH + i + '.png')
             plt.show(block=True)
+        
+        
 
 if __name__ == "__main__":
     nilm_eval().test()

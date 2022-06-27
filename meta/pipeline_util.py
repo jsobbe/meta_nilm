@@ -8,9 +8,9 @@ import datetime
 PATH = './meta/logs/runs/'
 
 # TODO datasets
-def log_pipeline_run(mode, optimizer=None, runtime=None, final_loss=None, avg_loss=None, result=None):
+def log_pipeline_run(mode, optimizer=None, runtime=None, final_loss=None, avg_loss=None, result=None, metrics=None):
     try:
-        df = pd.read_pickle(PATH + 'log_' + mode + '.pkl')
+        df = pd.read_pickle(PATH + 'log_' + mode + '_v2.pkl')
     except FileNotFoundError:
         df = pd.DataFrame()
         
@@ -31,11 +31,13 @@ def log_pipeline_run(mode, optimizer=None, runtime=None, final_loss=None, avg_lo
         log['optimizer'] = optimizer
     if result:
         log['result'] = result
+    if metrics:
+        log['metrics'] = metrics
     log['date'] = datetime.datetime.now().strftime("%c")
         
     df = df.append(log, ignore_index=True)
-    df.to_pickle(PATH + 'log_' + mode + '.pkl')
-    df.to_csv(PATH + 'log_' + mode + '.csv')
+    df.to_pickle(PATH + 'log_' + mode + '_v2.pkl')
+    df.to_csv(PATH + 'log_' + mode + '_v2.csv')
         
     
 
@@ -48,7 +50,9 @@ def get_meta_training_log():
                        'use imitation':conf_train.USE_IMITATION,
                        'use curriculum':conf_train.USE_CURRICULUM,
                        'shared net':conf_train.SHARED_NET,
-                       'data':conf_nilm.DATASETS_TRAIN
+                       'random scaling':conf_train.USE_SCALE,
+                       'data':conf_nilm.DATASETS_TRAIN,
+                       'model':conf_train.SAVE_PATH
                       }
     experiment_meta.update(get_nilm_model_log())
     return experiment_meta
@@ -67,12 +71,8 @@ def get_meta_evaluation_log():
     
     
 def get_nilm_testing_log():
-    experiment_meta = {'epochs':conf_nilm.NUM_EPOCHS,
-                       'steps':conf_nilm.NUM_STEPS, 
-                       'metrics':','.join(conf_nilm.METRICS), 
-                        'unroll len':conf_nilm.UNROLL_LENGTH,
-                       'learn_rate':conf_nilm.LEARNING_RATE,
-                       'data':conf_nilm.DATASETS_NILM
+    experiment_meta = {'metrics':','.join(conf_nilm.METRICS), 
+                       'data':conf_nilm.DATASETS_TEST
                       }
     experiment_meta.update(get_nilm_model_log())
     return experiment_meta
