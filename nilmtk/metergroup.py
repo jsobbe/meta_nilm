@@ -706,7 +706,7 @@ class MeterGroup(Electric):
         verbose = kwargs.get('verbose')
 
         # Check for empty sections
-        sections = [section for section in sections if section]
+        sections = [section for section in sections if section and not section.empty]
         if not sections:
             print("No sections to load.")
             yield pd.DataFrame(columns=columns)
