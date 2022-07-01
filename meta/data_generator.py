@@ -35,7 +35,6 @@ def opt_variables_initializer(opt, var_list, if_adam=False):
 class data_loader():
     def __init__(self, make_loss, x, constants, subsets, scale, optimizers, unroll_len):
         self.unroll_len = unroll_len
-        print('Optimizers: ', str(optimizers))
         self.optimizers = optimizers.split(",")
         self.num_subsets = len(subsets)
 

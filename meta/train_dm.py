@@ -68,7 +68,7 @@ def main(_):
     for appl in conf_train.APPLIANCES:
         try:
             appliance_data[appl] = {}
-            appliance_data[appl]['mains'], appliance_data[appl]['appls'] = nilm_seq2point.preprocess_data(mode='train', appliance=appl)
+            appliance_data[appl]['mains'], appliance_data[appl]['appls'] = nilm_seq2point.fetch_and_preprocess_data(mode='train', appliance=appl)
         except KeyError:
             print('no data found for appliance ', appl)
             appliance_data.pop(appl)
@@ -77,7 +77,7 @@ def main(_):
 
     # Problem.
     if conf_train.CONTINUE_TRAINING:
-        net_config, net_assignments = util.get_config(conf_train.PROBLEM, [save_path + 'conv.l2l-0', save_path + 'fc.l2l-0'], shared_net=conf_train.SHARED_NET)
+        net_config, net_assignments = util.get_config(conf_train.PROBLEM, save_path + 'cw.l2l-0' if conf_train.SHARED_NET else [save_path + 'conv.l2l-0', save_path + 'fc.l2l-0'], shared_net=conf_train.SHARED_NET)
     else:
         net_config, net_assignments = util.get_config(conf_train.PROBLEM, shared_net=conf_train.SHARED_NET)
     problem, mains_p, appl_p = nilm_seq2point.model(mode='train') 
@@ -237,7 +237,7 @@ def main(_):
                     print('Validation result improved!')
                 elif num_eval >= conf_train.MIN_NUM_EVAL and improved:
                     # restore model
-                    optimizer.restore(sess, conf_train.SAVE_PATH, curriculum_idx)
+                    optimizer.restore(sess, save_path, curriculum_idx)
                     num_eval = 0
                     improved = False
                     curriculum_idx += 1
@@ -275,16 +275,6 @@ def main(_):
         pipeline_util.log_pipeline_run(mode='train', result=loss_record, final_loss=loss_record[-1], runtime=run_time, optimizer='dm')
         print ("total time = {}s...".format(run_time))
                     
-#             gt_final = sess.run(gt)
-#             print('Final ground truth appliance data (length=', gt_final.size, ') has mean of ' + 
-#                   str(np.mean(gt_final)) + ' and std of ' + str(np.std(gt_final)) + '.')
-#             pred_final = sess.run(pred)
-#             print('Final predicted appliance data (length=', pred_final.size, ') has mean of ' + 
-#                   str(np.mean(pred_final)) + ' and std of ' + str(np.std(pred_final)) + '.')
-                  
-#         tf.train.Saver().save(sess, './modesl/nilm_model')
-
-
 
         
     
@@ -309,6 +299,7 @@ def _plot_results(results):
         os.mkdir(directory)
     
     plt.figure(figsize=(21, 9))
+    plt.title(conf_train.OPTIMIZER_NAME)
     plt.xlabel('Steps')
     plt.ylabel('Loss')
     plt.yscale("log")

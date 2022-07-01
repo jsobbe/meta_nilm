@@ -5,7 +5,7 @@ OUTPUT_PATH = "./meta/results/0_train/"
 PROBLEM = "nilm_seq"
 
 # TODO add optimizer_name -> generate paths and create folders
-OPTIMIZER_NAME = "rnn_e_base"
+OPTIMIZER_NAME = "dm_base_nb"
 
 APPLIANCES = [
     'fridge', 
@@ -16,11 +16,11 @@ APPLIANCES = [
 ]
 
 # Enhanced training
-USE_IMITATION = True
-USE_CURRICULUM = True
+USE_IMITATION = False
+USE_CURRICULUM = False
 
 # Training parameters
-NUM_EPOCHS = 1000
+NUM_EPOCHS = 800
 VALIDATION_PERIOD = 50
 VALIDATION_EPOCHS = 9
 NUM_STEPS = 400

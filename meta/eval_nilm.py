@@ -11,6 +11,8 @@ import matplotlib.pyplot as plt
 import datetime
 import pipeline_util
 
+BATCH_SIZE = 8192
+
 def _dropna(mains_df, appliance_dfs=[]):
     """
     Drops the missing values in the Mains reading and appliance readings and returns consistent data by computing the intersection
@@ -112,15 +114,13 @@ class nilm_eval():
 
 
     def predict(self, test_elec, test_submeters, sample_period, timezone ):
-#         print ("Generating predictions for :",clf.MODEL_NAME)        
         """
         Generates predictions on the test dataset using the specified classifier.
         """
         # "ac_type" varies according to the dataset used. 
         # Make sure to use the correct ac_type before using the default parameters in this code.   
-        #TODO run multiple times with the same variables/references? -> Make problem instantiable with constructor and data
         if self.do_preprocessing:
-            test_main_list, _ = nilm_seq2point.call_preprocessing(test_elec, submeters_lst=None, window_size=self.window_size)
+            test_main_list, _ = nilm_seq2point.preprocess_data(test_elec, submeters_lst=None, window_size=self.window_size)
             
         mains = []
         mains_len = 0
@@ -146,15 +146,12 @@ class nilm_eval():
                     sess.run(tf.global_variables_initializer())
                     sess.run(tf.local_variables_initializer())
                     
-                    #placeholders = [ op for op in sess.graph.get_operations() if op.type == "Placeholder"]
-                    #print('Placeholders:', str(placeholders))
-                    
                     prediction = sess.run(result, feed_dict={mains_p:mains.squeeze()})
                     print('Add appl mean: ', self.appliance_params[appliance]['mean'])
                     print('Add appl std: ', self.appliance_params[appliance]['std'])
                     print('Before adjusting prediction mean: ', np.mean(prediction))
                     print('Before adjusting prediction std: ', np.std(prediction))
-                    prediction = self.appliance_params[appliance]['mean'] + prediction * self.appliance_params[appliance]['std'] #TODO make sure mean is calculated correctly in advance!
+                    prediction = self.appliance_params[appliance]['mean'] + prediction * self.appliance_params[appliance]['std']
                     print('After adjusting prediction mean: ', np.mean(prediction))
                     print('After adjusting prediction std: ', np.std(prediction))
                     valid_predictions = prediction.flatten()
@@ -187,10 +184,6 @@ class nilm_eval():
             print('pred for ', app_name, ' mean: ', pred[app_name])
         pred_overall = pd.DataFrame(pred,dtype='float32')
 
-        print('gt type: ', type(gt_overall))
-        print('gt: ', gt_overall)
-        print('pred type: ', type(pred_overall))
-        print('pred: ', pred_overall)
         return gt_overall, pred_overall
 
 
@@ -239,7 +232,7 @@ class nilm_eval():
         if self.display_predictions:
             for i in pred_overall.columns:
                 plt.figure(figsize=(100, 12))
-                #plt.plot(self.test_mains[0],label='Mains reading')
+#                 plt.plot(main,label='Mains reading') #TODO extract from preprocessing based on indeces?
                 plt.plot(gt_overall[i.split('_')[-1]],label='Truth')
                 plt.plot(pred_overall[i],label='Pred')
                 plt.xticks(rotation=90)

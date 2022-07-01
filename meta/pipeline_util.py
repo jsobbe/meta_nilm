@@ -62,7 +62,7 @@ def get_meta_evaluation_log():
     experiment_meta = {'epochs':conf_eval.NUM_EPOCHS,
                        'steps':conf_eval.NUM_STEPS,
                        'appliances':','.join(conf_eval.APPLIANCES), 
-                        'number of runs':conf_eval.NUM_RUNS,
+                       'seeds':conf_eval.SEEDS,
                        'learn_rate':conf_eval.LEARNING_RATE,
                        'data':conf_nilm.DATASETS_EVAL
                       }

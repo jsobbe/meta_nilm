@@ -41,7 +41,7 @@ import conf_nilm
 import nilm_seq2point
 import pipeline_util
 
-SEEDS = random.sample(range(0, 100), conf_eval.NUM_RUNS)
+# SEEDS = random.sample(range(0, 100), conf_eval.NUM_RUNS)
 
 def main(_):
     font = {'family' : 'normal',
@@ -55,7 +55,7 @@ def main(_):
     for appliance in conf_eval.APPLIANCES:
         appliance_data = {}
         try:
-            appliance_data['mains'], appliance_data['appls'] = nilm_seq2point.preprocess_data(mode='eval', appliance=appliance)
+            appliance_data['mains'], appliance_data['appls'] = nilm_seq2point.fetch_and_preprocess_data(mode='eval', appliance=appliance)
         except KeyError:
             print('no data found for appliance ', appliance)
             continue
@@ -77,7 +77,7 @@ def main(_):
             num_unrolls = conf_eval.NUM_STEPS
 
             # Problem, NET_CONFIG = predefined conf for META-net, NET_ASSIGNMENTS = None
-            problem, mains_p, appl_p = nilm_seq2point.model(mode='eval', appliance=appliance, optimizer=optimizer_name) 
+            problem, mains_p, appl_p = nilm_seq2point.model(mode='eval', optimizer=optimizer_name) 
             if '_' in optimizer_name:
                 net_config, net_assignments = util.get_config(conf_eval.PROBLEM, path, net_name='rnn' if 'rnn' in optimizer_name else None, shared_net=shared_net)
 
@@ -180,6 +180,7 @@ def main(_):
                     total_time = 0
                     total_cost = 0
                     loss_record = []
+                    nilm_vars = []
                     for e in xrange(conf_eval.NUM_EPOCHS):
                         mains_data = appliance_data['mains']
                         appl_data = appliance_data['appls']
@@ -196,16 +197,43 @@ def main(_):
 
                     print('avg_cost:', total_cost)
                     print('loss_record:', loss_record)
-                    print('final_loss:', cost[-1], flush=True)
+                    print('final_loss:', cost[-1])
+                    print('problem_vars:', len(problem_vars))
+                    print('nilm_vars:', len(nilm_vars))
+                    print('best:', best_losses[optimizer_name], flush=True)
 
                     results[optimizer_name].append(np.array(loss_record))
 
                     if cost[-1] < best_losses[optimizer_name]:
                         best_losses[optimizer_name] = cost[-1]
-#                         nilm_vars=[]
-#                         for var in problem_vars:
-#                             nilm_vars.append(sess.run(var, feed_dict={mains_p:mains_data, appl_p:appl_data}))
-                        models[optimizer_name] = nilm_vars
+                        
+                    # Save nilm model on first iteration
+                    if conf_eval.SEEDS[0] == seed:
+                        temp_vars = {}
+#                         if not nilm_vars:
+                        nilm_vars = conf_nilm.NILM_VARS if not conf_nilm.BATCH_NORM else conf_nilm.NILM_VARS_BATCH_NORM
+                        for var, name in zip(problem_vars, nilm_vars):
+                            run_var = sess.run(var)
+                            temp_vars[name]=run_var
+#                         else:
+#                             for i in range(len(problem_vars)):
+#                                 temp_vars[problem_vars[i].name]=nilm_vars[i]
+#                             net_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES,
+#                                   scope='S2P')
+#                             bn_vars = []
+#                             for layer in conf_nilm.CONV_LAYERS:
+#                                 bn_vars.append(sess.run(tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES,
+#                                   scope=layer + '/batch_normalization/gamma')[0]))
+#                                 bn_vars.append(sess.run(tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES,
+#                                   scope=layer + '/batch_normalization/beta')[0]))
+#                             nilm_vars.append(bn_vars)
+#                             for var in net_vars:
+#                                 run_var = sess.run(var)
+#                                 print('Batch_n var: ', str(run_var))
+#                                 temp_vars[var.name]=run_var
+                        models[optimizer_name] = temp_vars
+                        print('\nTEMP VARS:')
+                        print(str(temp_vars.keys()))
 
                     # Results.
                     util.print_stats("Epoch {}".format(conf_eval.NUM_EPOCHS), total_cost,
@@ -214,19 +242,9 @@ def main(_):
             _plot_optimizer_results(results[optimizer_name], optimizer_name, result_directory)
             _save_optimizer_results(results[optimizer_name], optimizer_name, appliance)
             pipeline_util.log_pipeline_run(mode='eval', optimizer=optimizer_name, final_loss = cost[-1], avg_loss=total_cost)
-                    #gt_final = sess.run(gt)
-                    #print('Final ground truth appliance data has mean of ' + 
-                    #      str(np.mean(gt_final)) + ' and std of ' + str(np.std(gt_final)) + '.')
-                   # pred_final = sess.run(pred)
-                    #print('Final predicted appliance data has mean of ' + 
-                    #      str(np.mean(pred_final)) + ' and std of ' + str(np.std(pred_final)) + '.')
-
-                    #result_df = pd.DataFrame({'gt': gt_final, 'pred': pred_final})
-                   # result_df.head(20)
-                    #result_df.to_csv('./meta/results/adam_test.csv')
 
             if conf_eval.SAVE_MODEL:
-                _save_optimized_nilm_model(models[optimizer_name], problem_vars, appliance, optimizer_name)
+                _save_optimized_nilm_model(models[optimizer_name], appliance, optimizer_name)
 
             tf.reset_default_graph()
 
@@ -237,10 +255,7 @@ def main(_):
             print('Best final loss achieved for appliance ', appliance, ' by optimizer ', opt, ': ', best_loss)
         
         
-def _save_optimized_nilm_model(nilm_vars, problem_vars, appliance_name, optimizer_name):
-    #print('VAR_X: ', type(nilm_vars))
-    #print('VAR_X length: ', len(nilm_vars))
-    #print('VAR_X content: ', str(nilm_vars))
+def _save_optimized_nilm_model(nilm_vars, appliance_name, optimizer_name):
     directory = conf_eval.NILM_MODEL_PATH + appliance_name + '/'
     if not os.path.exists(directory):
         os.mkdir(directory)
@@ -248,12 +263,21 @@ def _save_optimized_nilm_model(nilm_vars, problem_vars, appliance_name, optimize
     if not os.path.exists(directory):
         os.mkdir(directory)
     
-    count = 0
-    for j in range(len(nilm_vars)):
-        if not 'batch_norm' in problem_vars[j].name:
-            np.save(directory + conf_nilm.NILM_VARS[count], nilm_vars[j])
-            count += 1
-        
+    for name, var in nilm_vars.items():
+        name = name.replace('/','-')
+        name = name.split(':')[0]
+        name = name.replace('S2P-' ,'')
+        if 'batch' in name:
+            print(name)
+            print(str(var))
+        np.save(directory + name, var)
+    
+#     count = 0
+#     for j in range(len(nilm_vars)):
+#         if not 'batch_norm' in problem_vars[j].name:
+#             np.save(directory + conf_nilm.NILM_VARS[count], nilm_vars[j])
+#             count += 1
+#         np.save(directory + conf_nilm.NILM_VARS[j], nilm_vars[j])
         
 def _save_optimizer_results(results, optimizer, appliance):
     if not os.path.exists(conf_eval.OUTPUT_PATH + appliance + '/'):
@@ -271,8 +295,8 @@ def _plot_optimizer_results(results, optimizer, directory):
 
     plt.figure(figsize=(21, 9))
     plt.plot(average, label='Average', linewidth='2', color='blue')
-    plt.plot(maxs,label='Max', linewidth='1', color='red')
-    plt.plot(mins,label='Min', linewidth='1', color='green')
+    if len(conf_eval.SEEDS) > 1:
+        plt.fill_between(average, mins, maxs,alpha=0.3, color='blue')
     #for r in results:
     #    plt.plot(r, linestyle='dotted', color='grey', linewidth='1')
     plt.legend()
@@ -281,6 +305,15 @@ def _plot_optimizer_results(results, optimizer, directory):
     plt.ylabel('Loss')
     plt.yscale("log")
     plt.savefig(directory + optimizer + '.png')
+    
+    
+    plt.figure(figsize=(21, 9))
+    plt.xlabel('Steps')
+    plt.ylabel('Loss')
+    plt.yscale("log")
+    plt.plot(np.convolve(average, np.ones(10)/10, mode='valid'), label='Moving average (10)', linewidth='2')
+    plt.legend()
+    plt.savefig(directory + optimizer + '_avg.png')
 
 def _plot_appliance_results(results, directory):
     plt.figure(figsize=(21, 9))
@@ -289,9 +322,20 @@ def _plot_appliance_results(results, directory):
     plt.yscale("log")
     for optimizer, result in results.items():
         average = np.mean(result, axis=0)
-        plt.plot(average, label=optimizer, linewidth='2')
+        plt.plot(average, label=optimizer, linewidth='1')
     plt.legend()
     plt.savefig(directory + 'aggregate.png')
+    
+    
+    plt.figure(figsize=(21, 9))
+    plt.xlabel('Steps')
+    plt.ylabel('Loss')
+    plt.yscale("log")
+    for optimizer, result in results.items():
+        average = np.mean(result, axis=0)
+        plt.plot(np.convolve(average, np.ones(10)/10, mode='valid'), label=optimizer, linewidth='2')
+    plt.legend()
+    plt.savefig(directory + 'aggregate_avg.png')
         
 
 if __name__ == "__main__":

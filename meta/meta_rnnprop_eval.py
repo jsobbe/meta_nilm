@@ -330,11 +330,6 @@ class MetaOptimizer(object):
     
     optimizee_vars, constants = _get_variables(make_loss)
 
-    print("Optimizee variables")
-    print([op.name for op in optimizee_vars])
-    print("Problem variables")
-    print([op.name for op in constants])
-
     # create scale placeholder here
     scale = []
     for k in optimizee_vars:
@@ -344,8 +339,6 @@ class MetaOptimizer(object):
     # Create the optimizer networks and find the subsets of variables to assign
     # to each optimizer.
     nets, net_keys, subsets = _make_nets(optimizee_vars, self._config, net_assignments)
-    print('nets', nets)
-    print('subsets', subsets)
     # Store the networks so we can save them later.
     self._nets = nets
 
@@ -373,6 +366,10 @@ class MetaOptimizer(object):
       """Parameter and RNN state update."""
       with tf.name_scope("gradients"):
         gradients = tf.gradients(fx, x)
+        print('GRADIENTS')
+        print(str(gradients))
+        print(str(fx))
+        print(str(x))
 
         # Stopping the gradient here corresponds to what was done in the
         # original L2L NIPS submission. However it looks like things like
@@ -422,6 +419,9 @@ class MetaOptimizer(object):
         t_next = t + 1
 
       return t_next, fx_array, x_next, state_next, state_mt_next, state_vt_next
+
+    print('_-_OPTIMIZEE_-_VARS_-_')
+    print(str(optimizee_vars))
 
     # Define the while loop.
     fx_array = tf.TensorArray(tf.float32, size=len_unroll+1,

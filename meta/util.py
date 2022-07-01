@@ -25,7 +25,6 @@ from timeit import default_timer as timer
 import numpy as np
 from six.moves import xrange
 
-import problems
 import conf_nilm
 import random
 
@@ -102,7 +101,11 @@ def run_eval_epoch(sess, cost_op, ops, num_unrolls, step=None, unroll_len=None, 
     result = sess.run([cost_op] + ops, feed_dict=feed_dict)
     cost = result[0]
     total_cost.append(cost)
-  return timer() - start, total_cost, result[-1], result[1][-1:]
+    try:
+        nilm_vars = result[1][-14:]
+    except TypeError:
+        nilm_vars = []
+  return timer() - start, total_cost, result[-1], nilm_vars
 
 
 def print_stats(header, total_error, total_time, n):
@@ -153,8 +156,8 @@ def _get_net_per_layer_type(path, net_name):
         "conv": _get_default_net_config(c_path, net_name),
         "fc": _get_default_net_config(d_path, net_name)
     }
-    conv_vars = ["conv_{}/weights".format(i) for i in xrange(1, 4)]
-    conv_vars += ["conv_{}/biases".format(i) for i in xrange(1, 4)]
+    conv_vars = ["conv_{}/weights".format(i) for i in xrange(1, 6)]
+    conv_vars += ["conv_{}/biases".format(i) for i in xrange(1, 6)]
     #conv_vars += ["conv_batch_norm_{}/beta".format(i) for i in xrange(5)]
     fc_vars = ["dense_{}/weights".format(i) for i in xrange(1, 3)]
     fc_vars += ["dense_{}/biases".format(i) for i in xrange(1, 3)]

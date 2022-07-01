@@ -6,9 +6,12 @@ from __future__ import print_function
 import os
 import numpy as np
 import pandas as pd
-import tarfile
 import sys
 
+import sonnet as snt
+import tensorflow as tf
+import tensorflow_probability as tfp
+import matplotlib.pyplot as plt
 
 from collections import OrderedDict
 
@@ -17,28 +20,17 @@ sys.path.append(BASE_PATH)
 
 from nilmtk import *
 
-from six.moves import urllib
-from six.moves import xrange  # pylint: disable=redefined-builtin
-import sonnet as snt
-import tensorflow as tf
-import pdb
-from vgg16 import VGG16
-import tensorflow_probability as tfp
-import matplotlib.pyplot as plt
+
 
 import conf_nilm
 
-tfd = tfp.distributions
-
-_nn_initializers = {
-    "w": tf.random_normal_initializer(mean=0, stddev=0.01),
-    "b": tf.random_normal_initializer(mean=0, stddev=0.01),
-}
 
 """
+Get the data for the specified mode and appliance and preprocess it.
+
 Returns: nparrays for appls and mains
 """
-def preprocess_data(mode="train", appliance=None):
+def fetch_and_preprocess_data(mode="train", appliance=None): #TODO refactor
     if mode is "train":
         data=conf_nilm.DATASETS_TRAIN
     else:
@@ -48,10 +40,10 @@ def preprocess_data(mode="train", appliance=None):
     do_preprocessing = conf_nilm.PREPROCESSING
     load = False
 
-    mains, subs = get_mains_and_subs_train(data, appliance)
+    mains, subs = _fetch_data(data, appliance)
     if not mains:
         raise KeyError
-    mains, appls = call_preprocessing(mains, subs, window_size)
+    mains, appls = preprocess_data(mains, subs, window_size)
     # mains is currently list of df with many windows
     # Convert list of dataframes to a single tensor
     mains_list = []
@@ -61,12 +53,12 @@ def preprocess_data(mode="train", appliance=None):
     appls_list = []
     appl_df = pd.concat(appls, axis=0)
     appl_np = appl_df.to_numpy().squeeze()
-    print("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
-    print(appl_np)
-    print("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
     return mains_np, appl_np
 
-def get_mains_and_subs_train(datasets, appliance_name):
+"""
+Fetches the overall mains and the subs for the specified appliance from the given datasets.
+"""
+def _fetch_data(datasets, appliance_name):
     power = conf_nilm.POWER
     sample_period = conf_nilm.SAMPLE_PERIOD
     drop_nans = conf_nilm.DROP_NANS
@@ -89,11 +81,8 @@ def get_mains_and_subs_train(datasets, appliance_name):
             train_df = train_df[[list(train_df.columns)[0]]]
             appliance_readings = [] # List of appliance dataframes
             
-            # TODO does meta expect a different format here with indeces?
-
             # get and append all single appliance dfs
             print("Loading appliance ", appliance_name, " for house ", building, "...")
-            #print("Found meters: ", str(train.buildings[building].elec))
             try:
                 appliance_df = next(train.buildings[building].elec[appliance_name].load(
                     physical_quantity='power', ac_type=power['appliance'], sample_period=sample_period))
@@ -132,7 +121,12 @@ def _dropna(mains_df, appliance_df):
         new_appliances_df = appliance_df.loc[ix]
         return mains_df, new_appliances_df
 
-def call_preprocessing(mains_lst, submeters_lst, window_size):
+"""
+Perform preprocessing on the given mains and submeters:
+Pads the edges of all windows with 'window_size'/2 units.
+Normalizes data by subtracting meand and dividing through the standard deviation.
+"""
+def preprocess_data(mains_lst, submeters_lst, window_size):
     print("\n< BEGIN PREPROCESSING >")
     mains_mean, mains_std = _get_mean_and_std(mains_lst)
     print('Mean in mains data: ', mains_mean)
@@ -147,7 +141,6 @@ def call_preprocessing(mains_lst, submeters_lst, window_size):
         units_to_pad = n // 2
         new_mains = np.pad(new_mains, (units_to_pad, units_to_pad), 'constant', constant_values=(0, 0))
         new_mains = np.array([new_mains[i:i + n] for i in range(len(new_mains) - n + 1)])
-#         print(str(new_mains))
         new_mains = (new_mains - mains_mean) / mains_std
         mains_df_list.append(pd.DataFrame(new_mains))
         
@@ -159,6 +152,7 @@ def call_preprocessing(mains_lst, submeters_lst, window_size):
             new_app_readings = (new_app_readings - app_mean) / app_std
             appliance_list.append(pd.DataFrame(new_app_readings))
     
+    print("\n< END PREPROCESSING >")
     return mains_df_list, appliance_list
 
     
@@ -171,7 +165,10 @@ def _get_mean_and_std(mains):
     return mean, std
 
 
-def model(appliance='fridge', optimizer="L2L", mode="train", model_path=None, batch_size=conf_nilm.BATCH_SIZE, predict=False):
+"""
+Method for creating the S2P model.
+"""
+def model(optimizer="L2L", mode="train", model_path=None, batch_size=conf_nilm.BATCH_SIZE, predict=False):
     
     file_prefix = "{}-temp-weights".format("nilm-seq")
     window_size = conf_nilm.WINDOW_SIZE
@@ -185,6 +182,8 @@ def model(appliance='fridge', optimizer="L2L", mode="train", model_path=None, ba
     Build the whole tf pipeline.
     """
     def build():
+        if conf_nilm.BATCH_NORM:
+            print('Batch normalization mode: ', mode in ['train', 'eval'])
         
         if window_size % 2 == 0:
             print("Sequence length should be odd!")
@@ -194,17 +193,11 @@ def model(appliance='fridge', optimizer="L2L", mode="train", model_path=None, ba
         else:
             print('Loading model for optimizer ', optimizer, ' and mode ', mode)
         
-#         with tf.Session() as sess:
-#             print('Mains data has mean of ' + np.mean(mains.eval(sess)) + ' and std of ' + np.std(mains.eval(sess)) + '.')
-#             print('Appliance data has mean of ' +  np.mean(appliances.eval(sess)) + ' and std of ' + np.std(appliances.eval(sess)) + '.')
-         #TODO return indices too?
-        
-        # If no appliances are provided, model is presumably used for prediction, so only return output
+        # If used for prediction, only output is required
         if not predict:
             indices_t = tf.random_uniform([batch_size], 0, tf.size(appls), tf.int32)
 
             mains_batch = tf.gather(mains, indices_t, axis = 0)
-           # print('Shape after gather: ', mains_batch.get_shape())
             output = tf.squeeze(network_seq(mains_batch))
             appl_batch = tf.gather(appls, indices_t, axis = 0)
             return _mse(targets=appl_batch, outputs=output), appl_batch, output
@@ -214,6 +207,9 @@ def model(appliance='fridge', optimizer="L2L", mode="train", model_path=None, ba
             output = tf.squeeze(network_seq(mains))
             return output
         
+    """
+    Creates a convolutional layer for the network.
+    """
     def conv_layer(inputs, strides, filter_size, output_channels, padding, name):
         # get size of last layer
         n_channels = inputs.get_shape()[-1]
@@ -233,7 +229,6 @@ def model(appliance='fridge', optimizer="L2L", mode="train", model_path=None, ba
                                           shape=[filter_size, n_channels, output_channels],
                                           dtype=tf.float32,
                                           initializer=tf.random_normal_initializer(stddev=0.01))
-                #print('Weights for ', name, ': ', str(kernel1))
                 # init bias
                 biases1 = tf.get_variable('biases', [output_channels], 
                                            dtype=tf.float32,
@@ -242,12 +237,20 @@ def model(appliance='fridge', optimizer="L2L", mode="train", model_path=None, ba
             inputs = tf.reshape(inputs, [batch_size, -1, output_channels])
             inputs = tf.nn.bias_add(inputs, biases1)
             if batch_norm:
-                inputs = tf.layers.batch_normalization(inputs, training=mode=='train')# TODO necessary?
+                # Call get_variable to assure they are added to optimizee_vars for meta training
+                tf.get_variable('batch_normalization/beta', [output_channels], dtype=tf.float32)
+                tf.get_variable('batch_normalization/gamma', [output_channels], dtype=tf.float32)
+                if model_path:
+                    inputs = tf.layers.batch_normalization(inputs, training=mode in ['train', 'eval'], beta_initializer=tf.constant_initializer(np.load(model_path + name + '-batch_normalization-beta.npy')), gamma_initializer=tf.constant_initializer(np.load(model_path + name + '-batch_normalization-gamma.npy')), trainable=True)
+                else:
+                    inputs = tf.layers.batch_normalization(inputs, training=mode in ['train', 'eval'], beta_initializer=tf.constant_initializer(0.0), gamma_initializer=tf.constant_initializer(1.0), trainable=True)
             inputs = tf.nn.relu(inputs)
         return inputs
         
+    """
+    Creates a dense layer for the network.
+    """
     def dense_layer(inputs, units, name, relu=False):
-#         inputs = tf.reshape(inputs, [units, -1])
         fc_shape2 = inputs.get_shape()[-1]
         with tf.variable_scope(name, reuse=tf.AUTO_REUSE) as scope:
             if model_path:
@@ -277,7 +280,7 @@ def model(appliance='fridge', optimizer="L2L", mode="train", model_path=None, ba
                 inputs = tf.nn.bias_add(tf.matmul(inputs, weights), bias)
         return inputs
         
-    # TODO rework based on paper and nilm implementation
+    # Reimplementation based on paper and nilm implementation
     def network_seq(inputs):
         inputs = tf.reshape(inputs, [batch_size, window_size, -1])
         inputs = conv_layer(inputs, strides=3, filter_size=10, output_channels=30, 
@@ -296,7 +299,6 @@ def model(appliance='fridge', optimizer="L2L", mode="train", model_path=None, ba
         inputs = dense_layer(inputs, 512, 'dense_1', relu=True)
         inputs = tf.nn.dropout(inputs, rate=0.2)
         inputs = dense_layer(inputs, 1, 'dense_2')
-        #print('Shape post dense: ', inputs.get_shape(), ' \n')
         return inputs
     
     def _mae(targets, outputs):
