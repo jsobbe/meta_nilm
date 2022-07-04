@@ -303,14 +303,14 @@ def _plot_optimizer_results(results, optimizer, directory):
     plt.title(optimizer)
     plt.xlabel('Steps')
     plt.ylabel('Loss')
-    plt.yscale("log")
+    plt.ylim(0, 1.2)
     plt.savefig(directory + optimizer + '.png')
     
     
     plt.figure(figsize=(21, 9))
     plt.xlabel('Steps')
     plt.ylabel('Loss')
-    plt.yscale("log")
+    plt.ylim(0, 1.2)
     plt.plot(np.convolve(average, np.ones(10)/10, mode='valid'), label='Moving average (10)', linewidth='2')
     plt.legend()
     plt.savefig(directory + optimizer + '_avg.png')

@@ -52,7 +52,7 @@ def main(_):
     
     # Configuration.
     if conf_train.USE_CURRICULUM:
-        num_steps = [100, 200, 500, 1000, 1500, 2000, 2500, 3000]
+        num_steps = [100, 200, 400, 800, 1200, 2000, 2500, 3000]
         num_unrolls = [int(ns / conf_train.UNROLL_LENGTH) for ns in num_steps]
         print('Resulting unrolls for curriculum: ', num_unrolls)
         num_unrolls_eval = num_unrolls[1:]

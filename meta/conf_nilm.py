@@ -7,24 +7,24 @@ DATASETS_TRAIN = {'redd':{
         5: {'start_time': '2011-04-01', 'end_time': '2011-04-30'}, 
         6: {'start_time': '2011-04-01', 'end_time': '2011-04-30'}
     }}}
-# DATASETS_EVAL = {'UKDALE':{
-#     'path': './data/ukdale.h5',
-#     'buildings': {
-#         1: {'start_time': '2012-12-01', 'end_time': '2013-12-01'} 
-#     }}}
-DATASETS_EVAL = {'redd':{
-    'path': './data/redd.h5',
+DATASETS_EVAL = {'UKDALE':{
+    'path': './data/ukdale.h5',
     'buildings': {
-        2: {'start_time': '2011-05-01', 'end_time': '2011-05-28'}, 
-        3: {'start_time': '2011-05-01', 'end_time': '2011-05-28'}, 
-        4: {'start_time': '2011-05-01', 'end_time': '2011-05-28'}, 
-        5: {'start_time': '2011-05-01', 'end_time': '2011-05-28'}, 
-        6: {'start_time': '2011-05-01', 'end_time': '2011-05-28'}
+        1: {'start_time': '2012-12-01', 'end_time': '2013-02-01'} 
     }}}
+# DATASETS_EVAL = {'redd':{
+#     'path': './data/redd.h5',
+#     'buildings': {
+#         2: {'start_time': '2011-05-01', 'end_time': '2011-05-28'}, 
+#         3: {'start_time': '2011-05-01', 'end_time': '2011-05-28'}, 
+#         4: {'start_time': '2011-05-01', 'end_time': '2011-05-28'}, 
+#         5: {'start_time': '2011-05-01', 'end_time': '2011-05-28'}, 
+#         6: {'start_time': '2011-05-01', 'end_time': '2011-05-28'}
+#     }}}
 DATASETS_TEST = {'redd':{
     'path': './data/redd.h5',
     'buildings': {
-        1: {'start_time': '2011-04-01', 'end_time': '2011-05-31'}
+        1: {'start_time': '2011-04-19', 'end_time': '2011-04-29'}
     }}}
 # DATASETS_TEST = {'UKDALE':{
 #     'path': './data/ukdale.h5',
@@ -47,21 +47,22 @@ METRICS = ['mae',
           'f1score',
           'nep']
 DISPLAY_PRED = True
+DISPLAY_DETAIL_TIME = {'start_time': '2011-04-21 06:00:00', 'end_time': '2011-04-21 12:00:00'}
 OPTIMIZERS = [
     #'dm', 
     #'dme', 
     #'rnn_days', 
-    'rnn_base',
+#     'rnn_base',
     'sgd',
     'momentum',
     'adagrad',
     'adadelta',
     'rmsprop',
     'adam',
-    'rnn_base',
-    'rnn_e_base',
-    'rnn_no_batch',
-    'rnn_i_base',
+#     'rnn_base',
+#     'rnn_e_base',
+#     'rnn_no_batch',
+#     'rnn_i_base',
 #     'dm_base',
 #     'dm_e_base',
 #     'l2o_dm', 
@@ -71,6 +72,9 @@ OPTIMIZERS = [
     #'rmsprop'
 ]
 
+OPTIMIZER_COLORS = {
+                'adam': 'purple'
+}
 
 NILM_VARS_BATCH_NORM = ['conv_1-weights','conv_1-biases',
              'conv_1-gamma', 'conv_1-beta',

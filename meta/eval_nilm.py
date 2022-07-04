@@ -8,10 +8,11 @@ from nilmtk.metergroup import MeterGroup
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
+import matplotlib.axes as ax
+import matplotlib
 import datetime
 import pipeline_util
-
-BATCH_SIZE = 8192
 
 def _dropna(mains_df, appliance_dfs=[]):
     """
@@ -45,6 +46,33 @@ def _get_appliance_params(train_appliances):
             app_std = 100
         appliance_params.update({app_name:{'mean':app_mean,'std':app_std}})
     return appliance_params
+
+def _make_plots(data, name):
+    font = {'family' : 'normal',
+        'size'   : 16}
+    matplotlib.rc('font', **font)
+    myFmt = mdates.DateFormatter('%d.')
+    plt.gca().xaxis.set_major_formatter(myFmt)
+    
+    plt.figure(figsize=(100, 12))
+    for label, values in data.items():
+        plt.plot(values, label=label)
+    plt.title(name)
+    plt.legend(fontsize=40)
+    plt.ylim(0, 1500)
+    plt.xlabel('Time', fontsize=40)
+    plt.ylabel('Power (W)', fontsize=40)
+    plt.savefig(conf_nilm.OUTPUT_PATH + name + '.png')
+
+    plt.figure(figsize=(12, 6))
+    for label, values in data.items():
+        plt.plot(values[conf_nilm.DISPLAY_DETAIL_TIME['start_time'] : conf_nilm.DISPLAY_DETAIL_TIME['end_time']], label=label)
+    plt.title(name)
+    plt.legend()
+    plt.ylim(0, 1200)
+    plt.xlabel('Time')
+    plt.ylabel('Power (W)')
+    plt.savefig(conf_nilm.OUTPUT_PATH + name + '_detailed.png')
 
 class nilm_eval():
     
@@ -117,6 +145,15 @@ class nilm_eval():
         """
         Generates predictions on the test dataset using the specified classifier.
         """
+        if self.display_predictions:
+            mains = None
+            for main in test_elec:
+                if not mains:
+                    mains = main
+                else:
+                    mains.append(main, ignore_index=True)
+        _make_plots(data={'Mains':mains}, name='mains')
+                    
         # "ac_type" varies according to the dataset used. 
         # Make sure to use the correct ac_type before using the default parameters in this code.   
         if self.do_preprocessing:
@@ -131,7 +168,7 @@ class nilm_eval():
         if mains_len <= 1:
             raise ValueError('No mains data found in provided time frame') 
         print('num of mains:', mains_len)
-        mains = np.asarray(mains)
+        mains_np = np.asarray(mains)
 
         test_predictions = []
         disggregation_dict = {}
@@ -146,7 +183,7 @@ class nilm_eval():
                     sess.run(tf.global_variables_initializer())
                     sess.run(tf.local_variables_initializer())
                     
-                    prediction = sess.run(result, feed_dict={mains_p:mains.squeeze()})
+                    prediction = sess.run(result, feed_dict={mains_p:mains_np.squeeze()})
                     print('Add appl mean: ', self.appliance_params[appliance]['mean'])
                     print('Add appl std: ', self.appliance_params[appliance]['std'])
                     print('Before adjusting prediction mean: ', np.mean(prediction))
@@ -228,22 +265,13 @@ class nilm_eval():
             self.errors.append(computed_metric)
             self.errors_keys.append(self.storing_key + "_" + metric)
 
-
+        print('HEADS')
+        pred_overall.head(5)
+        gt_overall.head(5)
         if self.display_predictions:
-            for i in pred_overall.columns:
+            for col in pred_overall.columns:
+                _make_plots(data={'Truth':gt_overall[col.split('_')[-1]], 'Prediction':pred_overall[col]}, name=col)
                 plt.figure(figsize=(100, 12))
-#                 plt.plot(main,label='Mains reading') #TODO extract from preprocessing based on indeces?
-                plt.plot(gt_overall[i.split('_')[-1]],label='Truth')
-                plt.plot(pred_overall[i],label='Pred')
-                plt.xticks(rotation=90)
-                plt.title(i)
-                plt.legend()
-                plt.xlabel('Time')
-                plt.ylabel('Power (W)')
-                #plt.yscale("log")
-                plt.savefig(conf_nilm.OUTPUT_PATH + i + '.png')
-            plt.show(block=True)
-        
         
 
 if __name__ == "__main__":

@@ -52,7 +52,7 @@ def get_meta_training_log():
                        'shared net':conf_train.SHARED_NET,
                        'random scaling':conf_train.USE_SCALE,
                        'data':conf_nilm.DATASETS_TRAIN,
-                       'model':conf_train.SAVE_PATH
+                       'model':conf_train.SAVE_PATH + conf_train.OPTIMIZER_NAME
                       }
     experiment_meta.update(get_nilm_model_log())
     return experiment_meta

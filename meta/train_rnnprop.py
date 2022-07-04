@@ -53,7 +53,7 @@ def main(_):
         
     # Configuration.
     if conf_train.USE_CURRICULUM:
-        num_steps = [100, 200, 500, 1000, 1500, 2000, 2500, 3000]
+        num_steps = [ 200, 400, 800, 1200, 2000, 2500, 3000]
         num_unrolls = [int(ns / conf_train.UNROLL_LENGTH) for ns in num_steps]
         num_unrolls_eval = num_unrolls[1:]
         curriculum_idx = 0
@@ -64,6 +64,7 @@ def main(_):
     if save_path is not None:
         if not os.path.exists(save_path):
             os.mkdir(save_path)
+    print('Model will be stored at: ', save_path)
 
     for appl in conf_train.APPLIANCES:
         try:
@@ -180,7 +181,7 @@ def main(_):
                                             label_pl=mt_labels[task_i],
                                             input_pl=mt_inputs[task_i], 
                                             feed_dict={mains_p:mains_data, appl_p:appl_data})
-            print('Finished EPOCH: ', e, ' with step: ', seq_step, ' and unroll len: ', conf_train.UNROLL_LENGTH)
+            print('Finished EPOCH: ', e, ' with step: ', seq_step, ' and unrolls: ', num_unrolls_cur)
             loss_record.append(cost)
             print ("training_loss={}".format(cost), flush=True)
 
@@ -212,10 +213,10 @@ def main(_):
                 else:
                     num_steps_cur = conf_train.NUM_STEPS
                 print ("epoch={}, num_steps={}, val_loss={}, val_median={}".format(
-                    e, num_steps_cur, eval_cost / conf_train.VALIDATION_EPOCHS, np.median(eval_costs)), flush=True)
+                    e, num_steps_cur, eval_cost / conf_train.VALIDATION_EPOCHS, np.nanmedian(eval_costs)), flush=True)
 
                 if not conf_train.USE_CURRICULUM:
-                    if np.median(eval_costs) < best_evaluation_median:
+                    if np.nanmedian(eval_costs) < best_evaluation_median:
                         best_evaluation_sum = eval_cost
                         best_evaluation_median = np.median(eval_costs)
                         optimizer.save(sess, save_path, e + 1)
@@ -225,15 +226,16 @@ def main(_):
 
                 # Curriculum learning.
                 # update curriculum
-                if np.median(eval_costs) < best_evaluation_median:
+                print('# unrolls: ', num_unrolls_cur)
+                if np.nanmedian(eval_costs) < best_evaluation_median:
                     best_evaluation = eval_cost
-                    best_evaluation_median = np.median(eval_costs)
+                    best_evaluation_median = np.nanmedian(eval_costs)
                     improved = True
                     # save model
                     optimizer.save(sess, save_path, curriculum_idx)
                     optimizer.save(sess, save_path, 0)
                     print('Validation result improved!')
-                elif num_eval >= conf_train.MIN_NUM_EVAL and improved:
+                elif num_eval >= conf_train.MIN_NUM_EVAL and improved or num_eval >= conf_train.MIN_NUM_EVAL and not improved and num_unrolls_cur* conf_train.UNROLL_LENGTH <= conf_train.NUM_STEPS:
                     # restore model
                     optimizer.restore(sess, save_path, curriculum_idx)
                     num_eval = 0
@@ -256,11 +258,10 @@ def main(_):
                                                     step=seq_step,
                                                     unroll_len=conf_train.UNROLL_LENGTH, 
                                                     feed_dict={mains_p:mains_data, appl_p:appl_data})
-                        eval_cost += cost
                     best_evaluation = eval_cost
-                    best_evaluation_median = np.median(eval_costs)
+                    best_evaluation_median = np.nanmedian(eval_costs)
                     print("epoch={}, num_steps={}, val_loss={}, val_median={}".format(
-                        e, num_steps[curriculum_idx], eval_cost / conf_train.VALIDATION_EPOCHS, np.median(eval_costs)), flush=True)
+                        e, num_steps[curriculum_idx], eval_cost / conf_train.VALIDATION_EPOCHS, np.nanmedian(eval_costs)), flush=True)
                 elif num_eval >= conf_train.MIN_NUM_EVAL and not improved:
                     print ("no improve during curriculum {} --> stop".format(curriculum_idx))
                     break
