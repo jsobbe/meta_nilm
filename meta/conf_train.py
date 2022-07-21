@@ -4,30 +4,32 @@ OUTPUT_PATH = "./meta/results/0_train/"
 # General training/model choices
 PROBLEM = "nilm_seq"
 
-OPTIMIZER_NAME = "rnn_e_appls"
+OPTIMIZER_NAME = "test"
 
 APPLIANCES = [
     'fridge', 
     'oven', 
-    'dish washer'
+    'dish washer', 
+    'kettle'
 ]
-
-# Enhanced training
-USE_IMITATION = True
-USE_CURRICULUM = True
 
 # Training parameters
 NUM_EPOCHS = 800
 VALIDATION_PERIOD = 50
-VALIDATION_EPOCHS = 9
+VALIDATION_EPOCHS = 5
 NUM_STEPS = 400
 UNROLL_LENGTH = 20
 LEARNING_RATE = 0.001
 SECOND_DERIVATIVES = False
+
+# Enhanced training
+USE_IMITATION = False
+USE_CURRICULUM = False
+
 # Curriculum parameters
 MIN_NUM_EVAL = 3
 
-CONTINUE_TRAINING = True
+CONTINUE_TRAINING = False
 
 USE_SCALE = True
 RD_SCALE_BOUND = 3.0

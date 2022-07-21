@@ -1,81 +1,48 @@
-DATASETS_TRAIN = {'redd':{
-    'path': './data/redd.h5',
-    'buildings': {
-        2: {'start_time': '2011-04-01', 'end_time': '2011-04-30'}, 
-        3: {'start_time': '2011-04-01', 'end_time': '2011-04-30'}, 
-        4: {'start_time': '2011-04-01', 'end_time': '2011-04-30'}, 
-        5: {'start_time': '2011-04-01', 'end_time': '2011-04-30'}, 
-        6: {'start_time': '2011-04-01', 'end_time': '2011-04-30'}
-    }}}
-DATASETS_EVAL = {'UKDALE':{
-    'path': './data/ukdale.h5',
-    'buildings': {
-        1: {'start_time': '2012-12-01', 'end_time': '2013-02-01'} 
-    }}}
-# DATASETS_EVAL = {'redd':{
-#     'path': './data/redd.h5',
-#     'buildings': {
-#         2: {'start_time': '2011-05-01', 'end_time': '2011-05-28'}, 
-#         3: {'start_time': '2011-05-01', 'end_time': '2011-05-28'}, 
-#         4: {'start_time': '2011-05-01', 'end_time': '2011-05-28'}, 
-#         5: {'start_time': '2011-05-01', 'end_time': '2011-05-28'}, 
-#         6: {'start_time': '2011-05-01', 'end_time': '2011-05-28'}
-#     }}}
-DATASETS_TEST = {'redd':{
-    'path': './data/redd.h5',
-    'buildings': {
-        1: {'start_time': '2011-04-19', 'end_time': '2011-04-29'}
-    }}}
-# DATASETS_TEST = {'UKDALE':{
-#     'path': './data/ukdale.h5',
-#     'buildings': {
-#         1: {'start_time': '2012-12-01', 'end_time': '2013-04-01'} 
-#     }}}
+# ----------------- NILM Evaluation -----------------
+# Files
+OUTPUT_PATH = './meta/results/2_nilm/'
+MODEL_PATH = './meta/models/_nilm/'
+
+# Evaluation parameters
+APPLIANCES = ['dish washer']
+METRICS = ['mae', 
+          'rmse',
+          'nep']
+OPTIMIZERS = [
+#     'sgd',
+#     'momentum',
+#     'adagrad',
+#     'adadelta',
+#     'rmsprop',
+#     'adam',
+#     'adam/base_iAWE',
+#     'rnn_base/test_iAWE',
+#     'rnn_e_base_nb2/test_iAWE',
+#     'adam/base_iAWE',
+#     'rnn_test/test_iAWE',
+#     'rnn_e_test/test_iAWE',
+#     'rnn_no_batch',
+#     'rnn_i_base',
+    'dish washer/adam', 
+    'dish washer/rnn_base', 
+    'dish washer/rnn_e_base_nb2', 
+]
+DISPLAY_PRED = True
+DISPLAY_DETAIL_TIME = {'start_time': '2013-07-21 06:00:00', 'end_time': '2013-07-23 12:00:00'}
+
+
+
+# ----------------- S2P Network & Preprocessing -----------------
 POWER = {'mains': ['apparent'], 'appliance': ['active']}
-APPLIANCES = ['fridge']
 DROP_NANS = True
-WINDOW_SIZE = 599 # According to seq paper
+WINDOW_SIZE = 599
 SAMPLE_PERIOD = 3
 BATCH_SIZE=512
 ARTIFICIAL_AGGREGATE = False
 BATCH_NORM = False
 PREPROCESSING = True
 
-# For NILM evaluation
-METRICS = ['mae', 
-          'rmse',
-          'f1score',
-          'nep']
-DISPLAY_PRED = True
-DISPLAY_DETAIL_TIME = {'start_time': '2011-04-21 06:00:00', 'end_time': '2011-04-21 12:00:00'}
-OPTIMIZERS = [
-    #'dm', 
-    #'dme', 
-    #'rnn_days', 
-#     'rnn_base',
-    'sgd',
-    'momentum',
-    'adagrad',
-    'adadelta',
-    'rmsprop',
-    'adam',
-#     'rnn_base',
-#     'rnn_e_base',
-#     'rnn_no_batch',
-#     'rnn_i_base',
-#     'dm_base',
-#     'dm_e_base',
-#     'l2o_dm', 
-#     'l2o_dm_e', 
-#     'l2o_rnn', 
-#     'l2o_rnn_e'
-    #'rmsprop'
-]
-
-OPTIMIZER_COLORS = {
-                'adam': 'purple'
-}
-
+# Network util for saving nilm models
 NILM_VARS_BATCH_NORM = ['conv_1-weights','conv_1-biases',
              'conv_1-gamma', 'conv_1-beta',
               'conv_2-weights','conv_2-biases',
@@ -88,7 +55,6 @@ NILM_VARS_BATCH_NORM = ['conv_1-weights','conv_1-biases',
              'conv_5-gamma', 'conv_5-beta',
               'dense_1-weights','dense_1-biases',
               'dense_2-weights','dense_2-biases']
-
 NILM_VARS = ['conv_1-weights','conv_1-biases',
               'conv_2-weights','conv_2-biases',
               'conv_3-weights','conv_3-biases',
@@ -96,7 +62,3 @@ NILM_VARS = ['conv_1-weights','conv_1-biases',
               'conv_5-weights','conv_5-biases',
               'dense_1-weights','dense_1-biases',
               'dense_2-weights','dense_2-biases']
-
-
-OUTPUT_PATH = './meta/results/2_nilm/'
-MODEL_PATH = './meta/models/_nilm/'
