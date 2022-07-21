@@ -42,6 +42,7 @@ import nilm_seq2point
 import pipeline_util
 
 # SEEDS = random.sample(range(0, 100), conf_eval.NUM_RUNS)
+SEEDS = conf_eval.SEEDS
 
 def main(_):
     font = {'family' : 'normal',
@@ -52,6 +53,13 @@ def main(_):
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
     
+    # Log setup for evaluation
+    print('\n---\nRunning evaluation:')
+    print('appliances: ', conf_eval.APPLIANCES)
+    print('optimizers: ', conf_eval.OPTIMIZERS)
+    print(pipeline_util.get_meta_evaluation_log())
+    print('---\n')
+    
     for appliance in conf_eval.APPLIANCES:
         appliance_data = {}
         try:
@@ -59,7 +67,7 @@ def main(_):
         except KeyError:
             print('no data found for appliance ', appliance)
             continue
-        print('For {} found {}/{} data entries.'.format(appliance, appliance_data['mains'].size, appliance_data['appls'].size))
+        print('For {} found {}/{} data entries.'.format(appliance, appliance_data['mains'].size, appliance_data['appls'].size), flush=True)
         
         results = {}
         models = {}
@@ -67,12 +75,17 @@ def main(_):
         for optimizer_name, data in conf_eval.OPTIMIZERS.items():
             path = data['path'] if '_' in optimizer_name else None
             shared_net = data['shared_net'] if '_' in optimizer_name else None
+            postfix = data['path_postfix']
             result_directory = conf_eval.OUTPUT_PATH + appliance + '/'
             if not os.path.exists(result_directory):
                 os.mkdir(result_directory)
+            result_directory = conf_eval.OUTPUT_PATH + postfix + '/'
+            if not os.path.exists(result_directory):
+                os.mkdir(result_directory)
+#             results[optimizer_name] = _load_optimizer_results(optimizer_name, appliance)
             results[optimizer_name] = list()
             models[optimizer_name] = list()
-            best_losses[optimizer_name] = 50 # arbitrary number higher than any expected realistic loss
+            best_losses[optimizer_name] = 10000 # arbitrary number higher than any expected realistic loss
             # Configuration.
             num_unrolls = conf_eval.NUM_STEPS
 
@@ -84,8 +97,8 @@ def main(_):
             step=None
             unroll_len=None
 
-            print('\nRunning evaluation for optimizer :', optimizer_name)
-            print('------------------------------------------------')
+            print('\nRunning evaluation for optimizer :', optimizer_name, ' and appliance ', appliance)
+            print('------------------------------------------------\n', flush=True)
 
             # Optimizer setup.
             if "adam" in optimizer_name:
@@ -167,9 +180,11 @@ def main(_):
                 raise ValueError("{} is not a valid optimizer".format(optimizer_name))
 
             # Run evaluation multiple times
-            for seed in conf_eval.SEEDS:
+            for seed in SEEDS:
+                tf.random.set_random_seed(seed)
                 tf.set_random_seed(seed)
                 random.seed(seed)
+                np.random.seed(seed)
                 print('\nEvaluation with seed=', seed)
 
                 with ms.MonitoredSession() as sess:
@@ -180,7 +195,7 @@ def main(_):
                     total_time = 0
                     total_cost = 0
                     loss_record = []
-                    nilm_vars = []
+                    nilm_vars = {}
                     for e in xrange(conf_eval.NUM_EPOCHS):
                         mains_data = appliance_data['mains']
                         appl_data = appliance_data['appls']
@@ -208,13 +223,12 @@ def main(_):
                         best_losses[optimizer_name] = cost[-1]
                         
                     # Save nilm model on first iteration
-                    if conf_eval.SEEDS[0] == seed:
-                        temp_vars = {}
-#                         if not nilm_vars:
-                        nilm_vars = conf_nilm.NILM_VARS if not conf_nilm.BATCH_NORM else conf_nilm.NILM_VARS_BATCH_NORM
-                        for var, name in zip(problem_vars, nilm_vars):
+                    if SEEDS[0] == seed:
+                        nilm_vars = dict()
+                        print('Fill nilm vars with problem vars')
+                        for var, name in zip(problem_vars, conf_nilm.NILM_VARS):
                             run_var = sess.run(var)
-                            temp_vars[name]=run_var
+                            nilm_vars[name]=run_var
 #                         else:
 #                             for i in range(len(problem_vars)):
 #                                 temp_vars[problem_vars[i].name]=nilm_vars[i]
@@ -231,35 +245,36 @@ def main(_):
 #                                 run_var = sess.run(var)
 #                                 print('Batch_n var: ', str(run_var))
 #                                 temp_vars[var.name]=run_var
-                        models[optimizer_name] = temp_vars
-                        print('\nTEMP VARS:')
-                        print(str(temp_vars.keys()))
+                        models[optimizer_name] = nilm_vars
 
                     # Results.
                     util.print_stats("Epoch {}".format(conf_eval.NUM_EPOCHS), total_cost,
                                      total_time, conf_eval.NUM_EPOCHS)
 
-            _plot_optimizer_results(results[optimizer_name], optimizer_name, result_directory)
-            _save_optimizer_results(results[optimizer_name], optimizer_name, appliance)
-            pipeline_util.log_pipeline_run(mode='eval', optimizer=optimizer_name, final_loss = cost[-1], avg_loss=total_cost)
+            _save_optimizer_results(results[optimizer_name], optimizer_name, appliance, postfix)
+            _plot_optimizer_results(results[optimizer_name], appliance, optimizer_name, result_directory)
+            pipeline_util.log_pipeline_run(mode='eval', optimizer=optimizer_name, final_loss = cost[-1], avg_loss=total_cost, result=results[optimizer_name])
 
             if conf_eval.SAVE_MODEL:
-                _save_optimized_nilm_model(models[optimizer_name], appliance, optimizer_name)
+                _save_optimized_nilm_model(models[optimizer_name], appliance, optimizer_name, postfix)
 
             tf.reset_default_graph()
 
-        _plot_appliance_results(results, result_directory)
+        _plot_appliance_results(results, result_directory, appliance)
         
         
         for opt, best_loss in best_losses.items():
             print('Best final loss achieved for appliance ', appliance, ' by optimizer ', opt, ': ', best_loss)
         
         
-def _save_optimized_nilm_model(nilm_vars, appliance_name, optimizer_name):
+def _save_optimized_nilm_model(nilm_vars, appliance_name, optimizer_name, postfix):
     directory = conf_eval.NILM_MODEL_PATH + appliance_name + '/'
     if not os.path.exists(directory):
         os.mkdir(directory)
     directory += optimizer_name + '/'
+    if not os.path.exists(directory):
+        os.mkdir(directory)
+    directory += postfix + '/'
     if not os.path.exists(directory):
         os.mkdir(directory)
     
@@ -268,8 +283,7 @@ def _save_optimized_nilm_model(nilm_vars, appliance_name, optimizer_name):
         name = name.split(':')[0]
         name = name.replace('S2P-' ,'')
         if 'batch' in name:
-            print(name)
-            print(str(var))
+            continue
         np.save(directory + name, var)
     
 #     count = 0
@@ -279,15 +293,25 @@ def _save_optimized_nilm_model(nilm_vars, appliance_name, optimizer_name):
 #             count += 1
 #         np.save(directory + conf_nilm.NILM_VARS[j], nilm_vars[j])
         
-def _save_optimizer_results(results, optimizer, appliance):
-    if not os.path.exists(conf_eval.OUTPUT_PATH + appliance + '/'):
-        os.mkdir(conf_eval.OUTPUT_PATH + appliance + '/')
-    output_file = '{}{}/{}_eval_loss_record.pickle-{}'.format(conf_eval.OUTPUT_PATH, appliance, optimizer, conf_eval.PROBLEM)
+def _save_optimizer_results(results, optimizer, appliance, postfix):
+    directory = conf_eval.OUTPUT_PATH + postfix + '/'
+    if not os.path.exists(directory):
+        os.mkdir(directory)
+    directory += appliance + '/'
+    if not os.path.exists(directory):
+        os.mkdir(directory)
+    output_file = '{}/{}_eval_loss_record.pickle-{}'.format(directory, optimizer, conf_eval.PROBLEM)
     with open(output_file, 'wb') as l_record:
         pickle.dump(results, l_record)
     print("Saving evaluate loss record {}".format(output_file))
+    
+def _load_optimizer_results(optimizer, appliance):
+    output_file = '{}{}/{}_eval_loss_record.pickle-{}'.format(conf_eval.OUTPUT_PATH, appliance, optimizer, conf_eval.PROBLEM)
+    print('load output file: ', output_file)
+    with open(output_file, 'rb') as l_record:
+        return pickle.load(l_record)
        
-def _plot_optimizer_results(results, optimizer, directory):
+def _plot_optimizer_results(results, appliance, optimizer, directory):
     average = np.mean(results, axis=0)
     error = np.std(results, axis=0)
     maxs = average + error
@@ -295,7 +319,7 @@ def _plot_optimizer_results(results, optimizer, directory):
 
     plt.figure(figsize=(21, 9))
     plt.plot(average, label='Average', linewidth='2', color='blue')
-    if len(conf_eval.SEEDS) > 1:
+    if len(SEEDS) > 1:
         plt.fill_between(average, mins, maxs,alpha=0.3, color='blue')
     #for r in results:
     #    plt.plot(r, linestyle='dotted', color='grey', linewidth='1')
@@ -304,7 +328,7 @@ def _plot_optimizer_results(results, optimizer, directory):
     plt.xlabel('Steps')
     plt.ylabel('Loss')
     plt.ylim(0, 1.2)
-    plt.savefig(directory + optimizer + '.png')
+    plt.savefig(directory + appliance + '/' + optimizer + '.png')
     
     
     plt.figure(figsize=(21, 9))
@@ -313,29 +337,28 @@ def _plot_optimizer_results(results, optimizer, directory):
     plt.ylim(0, 1.2)
     plt.plot(np.convolve(average, np.ones(10)/10, mode='valid'), label='Moving average (10)', linewidth='2')
     plt.legend()
-    plt.savefig(directory + optimizer + '_avg.png')
+    plt.savefig(directory + appliance + '/' + optimizer + '_avg.png')
 
-def _plot_appliance_results(results, directory):
+def _plot_appliance_results(results, directory, appliance):
     plt.figure(figsize=(21, 9))
     plt.xlabel('Steps')
     plt.ylabel('Loss')
-    plt.yscale("log")
+    plt.ylim(0, 1.2)
     for optimizer, result in results.items():
         average = np.mean(result, axis=0)
         plt.plot(average, label=optimizer, linewidth='1')
     plt.legend()
-    plt.savefig(directory + 'aggregate.png')
-    
+    plt.savefig(directory + appliance + '/' + 'aggregate.png')
     
     plt.figure(figsize=(21, 9))
     plt.xlabel('Steps')
     plt.ylabel('Loss')
-    plt.yscale("log")
+    plt.ylim(0, 1.2)
     for optimizer, result in results.items():
         average = np.mean(result, axis=0)
         plt.plot(np.convolve(average, np.ones(10)/10, mode='valid'), label=optimizer, linewidth='2')
     plt.legend()
-    plt.savefig(directory + 'aggregate_avg.png')
+    plt.savefig(directory + appliance + '/' + 'aggregate_avg.png')
         
 
 if __name__ == "__main__":
