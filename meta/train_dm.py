@@ -40,6 +40,27 @@ import matplotlib.pyplot as plt
 
 def main(_):
     
+    def _run_validation_epochs():
+        val_medians = []
+        val_means = []
+        for appl, data in appliance_data.items():
+
+            eval_cost = 0
+            eval_costs = []
+            for _ in xrange(conf_train.VALIDATION_EPOCHS):
+                mains_data = data['mains']
+                appl_data = data['appls']
+
+                time, cost = util.run_epoch(sess, cost_op, [update], reset,
+                                            num_unrolls_eval_cur,
+                                            feed_dict={mains_p:mains_data, appl_p:appl_data})
+                eval_cost += cost
+                eval_costs.append(cost)
+            val_medians.append(np.nanmedian(eval_costs))
+            val_means.append(np.nanmean(eval_costs))
+        return val_means, val_medians
+
+    
     loss_record = []
     validation_record = []
     appliance_data = {}
@@ -196,25 +217,17 @@ def main(_):
                     num_unrolls_eval_cur = num_unrolls
                 num_eval += 1
 
-                eval_cost = 0
-                eval_costs = []
-                for _ in xrange(conf_train.VALIDATION_EPOCHS):
-                    appliance = random.choice(list(appliance_data)) #TODO run for all appls?
-                    mains_data = appliance_data[appliance]['mains']
-                    appl_data = appliance_data[appliance]['appls']
-                    
-                    time, cost = util.run_epoch(sess, cost_op, [update], reset,
-                                                num_unrolls_eval_cur,
-                                                feed_dict={mains_p:mains_data, appl_p:appl_data})
-                    eval_cost += cost
-                    eval_costs.append(cost)
+                 # Mean from all appliance validations is used
+                val_sums, val_meds = _run_validation_epochs()
+                val_cost_med_avg = np.nanmean(val_meds)
+                val_cost_sum_avg = np.nanmean(val_sums)
 
                 if conf_train.USE_CURRICULUM:
                     num_steps_cur = num_steps[curriculum_idx]
                 else:
                     num_steps_cur = conf_train.NUM_STEPS
                 print ("epoch={}, num_steps={}, val_loss={}, val_median={}".format(
-                    e, num_steps_cur, eval_cost / conf_train.VALIDATION_EPOCHS, np.median(eval_costs)), flush=True)
+                    e, num_steps_cur, val_cost_sum_avg, val_cost_med_avg), flush=True)
 
                 if not conf_train.USE_CURRICULUM:
                     if np.median(eval_costs) < best_evaluation_median:
@@ -227,15 +240,16 @@ def main(_):
 
                 # Curriculum learning.
                 # update curriculum
-                if np.median(eval_costs) < best_evaluation_median:
-                    best_evaluation_sum = eval_cost
-                    best_evaluation_median = np.median(eval_costs)
+                print('# unrolls: ', num_unrolls_cur)
+                if val_cost_med_avg < best_evaluation_median:
+                    best_evaluation = val_cost_sum_avg
+                    best_evaluation_median = val_cost_med_avg
                     improved = True
                     # save model
                     optimizer.save(sess, save_path, curriculum_idx)
                     optimizer.save(sess, save_path, 0)
                     print('Validation result improved!')
-                elif num_eval >= conf_train.MIN_NUM_EVAL and improved:
+                elif num_eval >= conf_train.MIN_NUM_EVAL and improved or num_eval >= conf_train.MIN_NUM_EVAL and not improved and num_unrolls_cur* conf_train.UNROLL_LENGTH <= conf_train.NUM_STEPS:
                     # restore model
                     optimizer.restore(sess, save_path, curriculum_idx)
                     num_eval = 0
@@ -243,28 +257,18 @@ def main(_):
                     curriculum_idx += 1
                     if curriculum_idx >= len(num_unrolls):
                         curriculum_idx = -1
+                        print('Reached last curriculum')
+                    num_unrolls_eval_cur = num_unrolls_eval[curriculum_idx]
 
-                    # initial evaluation for next curriculum
-                    eval_cost = 0
-                    eval_costs = []
-                    for _ in xrange(conf_train.VALIDATION_EPOCHS):
-                        appliance = random.choice(list(appliance_data)) #TODO run for all appls?
-                        mains_data = appliance_data[appliance]['mains']
-                        appl_data = appliance_data[appliance]['appls']
-                        
-                        time, cost = util.run_epoch(sess, cost_op, [update], reset,
-                                                    num_unrolls_eval[curriculum_idx],
-                                                    feed_dict={mains_p:mains_data, appl_p:appl_data})
-                        eval_cost += cost
-                    best_evaluation = eval_cost
-                    best_evaluation_median = np.median(eval_costs)
-                    print("epoch={}, num_steps={}, val_loss={}, val_median={}".format(
-                        e, num_steps[curriculum_idx], eval_cost / conf_train.VALIDATION_EPOCHS, np.median(eval_costs)), flush=True)
-
+                    # Mean from all appliance validations is used
+                    val_sums, val_meds =_run_validation_epochs()
+                    best_evaluation_median = np.nanmean(val_meds)
+                    best_evaluation = np.nanmean(val_sums)
+                    print("epoch={}, num_steps={}, val_loss={}, val_median={}".format(e, num_steps[curriculum_idx], best_evaluation, best_evaluation_median, flush=True))
                 elif num_eval >= conf_train.MIN_NUM_EVAL and not improved:
                     print ("no improve during curriculum {} --> stop".format(curriculum_idx))
                     break
-                validation_record.append(eval_cost)
+                validation_record.append(val_cost_med_avg)
                 
         run_time = timer() - start_time
         

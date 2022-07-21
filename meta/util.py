@@ -63,15 +63,18 @@ def run_epoch(sess, cost_op, ops, reset, num_unrolls,
       else:
         feed_rs = {}
       feed_dict.update(feed_rs)
+      costs = [] 
       for i in xrange(num_unrolls):
         if step is not None:
             feed_dict[step] = i*unroll_len+1
         result = sess.run([cost_op] + ops, feed_dict=feed_dict)
         cost = result[0]
+        costs.append(float(cost))
   else:
       assert data is not None
       assert input_pl is not None
       assert label_pl is not None
+      costs = [] 
       for ri in xrange(num_unrolls):
           for pl, dat in zip(label_pl, data["labels"][ri]):
               feed_dict[pl] = dat
@@ -81,10 +84,11 @@ def run_epoch(sess, cost_op, ops, reset, num_unrolls,
               feed_dict[step] = ri * unroll_len + 1
           result = sess.run([cost_op] + ops, feed_dict=feed_dict)
           cost = result[0]
+          costs.append(float(cost))
             
 #   v = sess.run(var_x[0])
 #   print('Weights at end of epoch: ', str(v[0]))
-    
+#   print('Epoch costs: ', str(costs))
   return timer() - start, cost
 
 
