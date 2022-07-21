@@ -20,8 +20,7 @@ sys.path.append(BASE_PATH)
 
 from nilmtk import *
 
-
-
+import conf_data
 import conf_nilm
 
 
@@ -32,9 +31,9 @@ Returns: nparrays for appls and mains
 """
 def fetch_and_preprocess_data(mode="train", appliance=None): #TODO refactor
     if mode is "train":
-        data=conf_nilm.DATASETS_TRAIN
+        data=conf_data.DATASETS_TRAIN
     else:
-        data=conf_nilm.DATASETS_EVAL
+        data=conf_data.DATASETS_EVAL
     window_size = conf_nilm.WINDOW_SIZE
     batch_size = conf_nilm.BATCH_SIZE
     do_preprocessing = conf_nilm.PREPROCESSING
@@ -91,8 +90,8 @@ def _fetch_data(datasets, appliance_name):
                 print('No appliance data found for specified timestamp...')
                 continue
 
-            if drop_nans:
-                train_df, appliance_df = _dropna(train_df, appliance_df)
+#             if drop_nans:
+            train_df, appliance_df = _dropna(train_df, appliance_df)
 
             if artificial_aggregate: # TODO does this make sense for only one appliance?
                 print ("Creating an Artificial Aggregate")
@@ -111,10 +110,18 @@ def _dropna(mains_df, appliance_df):
         print ("Dropping missing values")
 
         # The below steps are for making sure that data is consistent by doing intersection across appliances
-        mains_df = mains_df.dropna()
+        if conf_nilm.DROP_NANS:
+            mains_df = mains_df.dropna()
+        else:
+            mains_df.fillna(0, inplace=True)
+#             mains_df = mains_df.dropna()
         ix = mains_df.index
         mains_df = mains_df.loc[ix]
-        appliance_df = appliance_df.dropna()
+        if conf_nilm.DROP_NANS:
+            appliance_df = appliance_df.dropna()
+        else:
+            appliance_df.fillna(0, inplace=True)
+#             appliance_df = appliance_df.dropna()
     
         ix = ix.intersection(appliance_df.index)
         mains_df = mains_df.loc[ix]
@@ -237,13 +244,13 @@ def model(optimizer="L2L", mode="train", model_path=None, batch_size=conf_nilm.B
             inputs = tf.reshape(inputs, [batch_size, -1, output_channels])
             inputs = tf.nn.bias_add(inputs, biases1)
             if batch_norm:
-                # Call get_variable to assure they are added to optimizee_vars for meta training
-                tf.get_variable('batch_normalization/beta', [output_channels], dtype=tf.float32)
-                tf.get_variable('batch_normalization/gamma', [output_channels], dtype=tf.float32)
-                if model_path:
-                    inputs = tf.layers.batch_normalization(inputs, training=mode in ['train', 'eval'], beta_initializer=tf.constant_initializer(np.load(model_path + name + '-batch_normalization-beta.npy')), gamma_initializer=tf.constant_initializer(np.load(model_path + name + '-batch_normalization-gamma.npy')), trainable=True)
-                else:
-                    inputs = tf.layers.batch_normalization(inputs, training=mode in ['train', 'eval'], beta_initializer=tf.constant_initializer(0.0), gamma_initializer=tf.constant_initializer(1.0), trainable=True)
+#                 # Call get_variable to assure they are added to optimizee_vars for meta training
+#                 tf.get_variable('batch_normalization/beta', [output_channels], dtype=tf.float32)
+#                 tf.get_variable('batch_normalization/gamma', [output_channels], dtype=tf.float32)
+#                 if model_path:
+#                     inputs = tf.layers.batch_normalization(inputs, training=mode in ['train', 'eval'], beta_initializer=tf.constant_initializer(np.load(model_path + name + '-batch_normalization-beta.npy')), gamma_initializer=tf.constant_initializer(np.load(model_path + name + '-batch_normalization-gamma.npy')), trainable=True)
+#                 else:
+                inputs = tf.layers.batch_normalization(inputs, training=mode in ['train', 'eval'], beta_initializer=tf.constant_initializer(0.0), gamma_initializer=tf.constant_initializer(1.0), trainable=True)
             inputs = tf.nn.relu(inputs)
         return inputs
         
@@ -291,7 +298,7 @@ def model(optimizer="L2L", mode="train", model_path=None, batch_size=conf_nilm.B
                             padding="VALID", name='conv_3')
         inputs = conv_layer(inputs, strides=2, filter_size=5, output_channels=50, 
                             padding="VALID", name='conv_4')
-        inputs = tf.nn.dropout(inputs, rate=0.2)
+        inputs = tf.nn.dropout(inputs, rate=0.35)
         inputs = conv_layer(inputs, strides=1, filter_size=5, output_channels=50, 
                             padding="VALID", name='conv_5')
         inputs = tf.nn.dropout(inputs, rate=0.2)

@@ -1,6 +1,9 @@
 import conf_nilm
+import conf_data
 import nilm_seq2point
 import tensorflow as tf
+import os
+import pickle
 
 from nilmtk.dataset import DataSet
 from nilmtk.losses import *
@@ -14,7 +17,7 @@ import matplotlib
 import datetime
 import pipeline_util
 
-def _dropna(mains_df, appliance_dfs=[]):
+def _dropna(mains_df, appliance_dfs=[], drop=True):
     """
     Drops the missing values in the Mains reading and appliance readings and returns consistent data by computing the intersection
     """
@@ -23,7 +26,10 @@ def _dropna(mains_df, appliance_dfs=[]):
     ix = mains_df.index
     mains_df = mains_df.loc[ix]
     for i in range(len(appliance_dfs)):
-        appliance_dfs[i] = appliance_dfs[i].dropna()
+        if drop:
+            appliance_dfs[i] = appliance_dfs[i].dropna()
+        else:
+            appliance_dfs[i] = appliance_dfs[i].fillna(0)
 
         
     for app_df in appliance_dfs:
@@ -48,6 +54,10 @@ def _get_appliance_params(train_appliances):
     return appliance_params
 
 def _make_plots(data, name):
+    appliance = name.split('_')[-1]
+    if not os.path.exists(conf_nilm.OUTPUT_PATH + appliance + '/'):
+        os.mkdir(conf_nilm.OUTPUT_PATH + appliance + '/')
+    
     font = {'family' : 'normal',
         'size'   : 16}
     matplotlib.rc('font', **font)
@@ -59,20 +69,24 @@ def _make_plots(data, name):
         plt.plot(values, label=label)
     plt.title(name)
     plt.legend(fontsize=40)
-    plt.ylim(0, 1500)
+    plt.ylim(0, 2000)
     plt.xlabel('Time', fontsize=40)
     plt.ylabel('Power (W)', fontsize=40)
-    plt.savefig(conf_nilm.OUTPUT_PATH + name + '.png')
+    plt.savefig(conf_nilm.OUTPUT_PATH + appliance + '/' + name.replace('/', '') + '.png')
 
     plt.figure(figsize=(12, 6))
     for label, values in data.items():
         plt.plot(values[conf_nilm.DISPLAY_DETAIL_TIME['start_time'] : conf_nilm.DISPLAY_DETAIL_TIME['end_time']], label=label)
     plt.title(name)
     plt.legend()
-    plt.ylim(0, 1200)
+    plt.ylim(0, 2000)
     plt.xlabel('Time')
     plt.ylabel('Power (W)')
-    plt.savefig(conf_nilm.OUTPUT_PATH + name + '_detailed.png')
+    plt.savefig(conf_nilm.OUTPUT_PATH + appliance + '/' + name.replace('/', '') + '_detailed.png')
+    
+#     output_file = '{}{}/{}_nilm_results.pickle'.format(conf_nilm.OUTPUT_PATH, appliance, name)
+#     with open(output_file, 'wb') as l_record:
+#         pickle.dump(data, l_record)
 
 class nilm_eval():
     
@@ -97,7 +111,7 @@ class nilm_eval():
 
     def test(self):
         # store the test_main readings for all buildings
-        d = conf_nilm.DATASETS_TEST
+        d = conf_data.DATASETS_TEST
 
         for dataset in d:
             print("Loading data for ",dataset, " dataset")
@@ -116,8 +130,8 @@ class nilm_eval():
                         sample_period=self.sample_period)))
                     appliance_readings.append(test_df)
 
-                if self.drop_nans:
-                    test_mains, appliance_readings = _dropna(test_mains,appliance_readings)
+#                 if self.drop_nans:
+                test_mains, appliance_readings = _dropna(test_mains,appliance_readings, drop=self.drop_nans)
                 print('appliance_readings: ', appliance_readings)
                     
                 if not appliance_readings:
