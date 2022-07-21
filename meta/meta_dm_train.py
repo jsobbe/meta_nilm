@@ -212,7 +212,7 @@ def _make_nets(variables, config, net_assignments):
         subset = [name_to_index[name] for name in names]
         keys.append(key)
         subsets.append(subset)
-#         print("Net: {}, Subset: {}".format(key, subset))
+        print("Net: {}, Subset: {}".format(key, subset))
 
   # subsets should be a list of disjoint subsets (as lists!) of the variables
   # and nets should be a list of networks to apply to each subset.
@@ -329,11 +329,6 @@ class MetaOptimizer(object):
     
     x, constants = _get_variables(make_loss) # Why does this return empty variables???!
 
-#     print("Optimizee variables")
-#     print([op.name for op in x])
-#     print("Problem variables")
-#     print([op.name for op in constants])
-
     # create scale placeholder here
     scale = []
     for k in x:
@@ -342,9 +337,6 @@ class MetaOptimizer(object):
     # Create the optimizer networks and find the subsets of variables to assign
     # to each optimizer.
     nets, net_keys, subsets = _make_nets(x, self._config, net_assignments)
-#     print('nets', nets)
-#     print('net_keys', net_keys)
-#     print('subsets', subsets)
     # Store the networks so we can save them later.
     self._nets = nets
 
@@ -353,7 +345,6 @@ class MetaOptimizer(object):
     with tf.name_scope("states"):
       for i, (subset, key) in enumerate(zip(subsets, net_keys)):
         net = nets[key]
-#         print('net: ', str(net))
         with tf.name_scope("state_{}".format(i)):
           state.append(_nested_variable(
               [net.initial_state_for_inputs(x[j], dtype=tf.float32)
@@ -373,8 +364,6 @@ class MetaOptimizer(object):
           gradients = [tf.stop_gradient(g) for g in gradients]
 
       with tf.name_scope("deltas"):
-#         print('gradients:',str(gradients))
-#         print('state:',str(state))
         deltas, state_next = zip(*[net(g, s) for g, s in zip(gradients, state)])
         state_next = _nested_tuple(state_next)
         state_next = list(state_next)
@@ -385,7 +374,6 @@ class MetaOptimizer(object):
       """While loop body. (called in 409)"""
       x_next = list(x)
       state_next = []
-      print('Timestep ', str(t))
 
       with tf.name_scope("fx"):
         scaled_x = [x[k] * scale[k] for k in range(len(scale))]
@@ -425,11 +413,6 @@ class MetaOptimizer(object):
 
     loss = tf.reduce_sum(fx_array.stack(), name="loss")
     
-    with tf.Session() as sess:
-        gt_final = sess.run(gt)
-        print('Start ground truth appliance data has mean of ' + 
-              str(np.mean(gt_final)) + ' and std of ' + str(np.std(gt_final)) + '.')
-
     ##################################
     ### multi task learning losses ###
     ##################################

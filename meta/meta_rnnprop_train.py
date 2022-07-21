@@ -329,11 +329,6 @@ class MetaOptimizer(object):
     
     x, constants = _get_variables(make_loss)
 
-    print("Optimizee variables")
-    print([op.name for op in x])
-    print("Problem variables")
-    print([op.name for op in constants])
-
     # create scale placeholder here
     scale = []
     for k in x:
@@ -342,8 +337,6 @@ class MetaOptimizer(object):
     # Create the optimizer networks and find the subsets of variables to assign
     # to each optimizer.
     nets, net_keys, subsets = _make_nets(x, self._config, net_assignments)
-    print('nets', nets)
-    print('subsets', subsets)
     # Store the networks so we can save them later.
     self._nets = nets
 

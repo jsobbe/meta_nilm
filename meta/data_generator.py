@@ -35,7 +35,6 @@ def opt_variables_initializer(opt, var_list, if_adam=False):
 class data_loader():
     def __init__(self, make_loss, x, constants, subsets, scale, optimizers, unroll_len):
         self.unroll_len = unroll_len
-        print('Optimizers: ', str(optimizers))
         self.optimizers = optimizers.split(",")
         self.num_subsets = len(subsets)
 
@@ -76,7 +75,7 @@ class data_loader():
         var_cat = tf.concat(var_flat, axis=0)
         return var_cat
 
-    def get_data(self, task_i, sess, num_unrolls, assign_func, rd_scale_bound, if_scale=True, mt_k=1):
+    def get_data(self, task_i, sess, num_unrolls, assign_func, rd_scale_bound, if_scale=True, mt_k=1, feed_dict={}):
         opt_name = self.optimizers[task_i]
         update = getattr(self, "update_"+opt_name)
 
@@ -107,7 +106,9 @@ class data_loader():
         # get updates
         data = {"inputs": [], "labels": []}
         x_prev = sess.run(self.x_flat)
-
+        
+        feed_rs.update(feed_dict)
+        
         for ri in range(num_unrolls):
             inputs = []  # (unroll_length, num_subsets, num_params)
             labels = []

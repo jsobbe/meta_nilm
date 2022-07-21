@@ -25,8 +25,6 @@ from timeit import default_timer as timer
 import numpy as np
 from six.moves import xrange
 
-import problems
-import nilm_seq2point
 import conf_nilm
 import random
 
@@ -34,7 +32,7 @@ import random
 def run_epoch(sess, cost_op, ops, reset, num_unrolls,
               scale=None, rd_scale=False, rd_scale_bound=3.0, assign_func=None, var_x=None,
               step=None, unroll_len=None,
-              task_i=-1, data=None, label_pl=None, input_pl=None):
+              task_i=-1, data=None, label_pl=None, input_pl=None, feed_dict={}):
   print('Unrolling training epoch ', num_unrolls, ' times.')
   """Runs one optimization epoch."""
   start = timer()
@@ -64,17 +62,19 @@ def run_epoch(sess, cost_op, ops, reset, num_unrolls,
         feed_rs = {p: v for p, v in zip(scale, randomized_scale)}
       else:
         feed_rs = {}
-      feed_dict = feed_rs
+      feed_dict.update(feed_rs)
+      costs = [] 
       for i in xrange(num_unrolls):
         if step is not None:
             feed_dict[step] = i*unroll_len+1
         result = sess.run([cost_op] + ops, feed_dict=feed_dict)
         cost = result[0]
-  else: # if multitask learning. But how is task selected?
+        costs.append(float(cost))
+  else:
       assert data is not None
       assert input_pl is not None
       assert label_pl is not None
-      feed_dict = {}
+      costs = [] 
       for ri in xrange(num_unrolls):
           for pl, dat in zip(label_pl, data["labels"][ri]):
               feed_dict[pl] = dat
@@ -84,27 +84,32 @@ def run_epoch(sess, cost_op, ops, reset, num_unrolls,
               feed_dict[step] = ri * unroll_len + 1
           result = sess.run([cost_op] + ops, feed_dict=feed_dict)
           cost = result[0]
+          costs.append(float(cost))
             
 #   v = sess.run(var_x[0])
 #   print('Weights at end of epoch: ', str(v[0]))
-    
+#   print('Epoch costs: ', str(costs))
   return timer() - start, cost
 
 
-def run_eval_epoch(sess, cost_op, ops, num_unrolls, step=None, unroll_len=None):
+def run_eval_epoch(sess, cost_op, ops, num_unrolls, step=None, unroll_len=None, feed_dict={}):
   """Runs one optimization epoch."""
   print('Unrolling evaluation epoch ', num_unrolls, ' times.')
   start = timer()
   # sess.run(reset)
   total_cost = []
-  feed_dict = {}
+  
   for i in xrange(num_unrolls):
     if step is not None:
         feed_dict[step] = i * unroll_len + 1
     result = sess.run([cost_op] + ops, feed_dict=feed_dict)
     cost = result[0]
     total_cost.append(cost)
-  return timer() - start, total_cost, result[-1]
+    try:
+        nilm_vars = result[1][-14:]
+    except TypeError:
+        nilm_vars = []
+  return timer() - start, total_cost, result[-1], nilm_vars
 
 
 def print_stats(header, total_error, total_time, n):
@@ -155,8 +160,8 @@ def _get_net_per_layer_type(path, net_name):
         "conv": _get_default_net_config(c_path, net_name),
         "fc": _get_default_net_config(d_path, net_name)
     }
-    conv_vars = ["conv_{}/weights".format(i) for i in xrange(1, 4)]
-    conv_vars += ["conv_{}/biases".format(i) for i in xrange(1, 4)]
+    conv_vars = ["conv_{}/weights".format(i) for i in xrange(1, 6)]
+    conv_vars += ["conv_{}/biases".format(i) for i in xrange(1, 6)]
     #conv_vars += ["conv_batch_norm_{}/beta".format(i) for i in xrange(5)]
     fc_vars = ["dense_{}/weights".format(i) for i in xrange(1, 3)]
     fc_vars += ["dense_{}/biases".format(i) for i in xrange(1, 3)]
@@ -166,9 +171,8 @@ def _get_net_per_layer_type(path, net_name):
     
 
 
-def get_config(problem_name, path=None, mode=None, net_name=None):
+def get_config(problem_name, path=None, net_name=None, shared_net=True):
   """Returns problem configuration."""
-  shared_net = True if net_name == 'rnn' else conf_nilm.SHARED_NET
   print('Load config for path ', path, ', net name ', net_name)
 # ----------------------- RELEVANT -------------------------
   if problem_name == "nilm_seq": 

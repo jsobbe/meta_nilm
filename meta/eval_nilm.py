@@ -1,18 +1,23 @@
-import util
-import nilm_config
+import conf_nilm
+import conf_data
 import nilm_seq2point
 import tensorflow as tf
+import os
+import pickle
 
 from nilmtk.dataset import DataSet
 from nilmtk.losses import *
 from nilmtk.metergroup import MeterGroup
 import pandas as pd
-from nilmtk.losses import *
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
+import matplotlib.axes as ax
+import matplotlib
 import datetime
+import pipeline_util
 
-def _dropna(mains_df, appliance_dfs=[]):
+def _dropna(mains_df, appliance_dfs=[], drop=True):
     """
     Drops the missing values in the Mains reading and appliance readings and returns consistent data by computing the intersection
     """
@@ -21,7 +26,10 @@ def _dropna(mains_df, appliance_dfs=[]):
     ix = mains_df.index
     mains_df = mains_df.loc[ix]
     for i in range(len(appliance_dfs)):
-        appliance_dfs[i] = appliance_dfs[i].dropna()
+        if drop:
+            appliance_dfs[i] = appliance_dfs[i].dropna()
+        else:
+            appliance_dfs[i] = appliance_dfs[i].fillna(0)
 
         
     for app_df in appliance_dfs:
@@ -45,30 +53,65 @@ def _get_appliance_params(train_appliances):
         appliance_params.update({app_name:{'mean':app_mean,'std':app_std}})
     return appliance_params
 
+def _make_plots(data, name):
+    appliance = name.split('_')[-1]
+    if not os.path.exists(conf_nilm.OUTPUT_PATH + appliance + '/'):
+        os.mkdir(conf_nilm.OUTPUT_PATH + appliance + '/')
+    
+    font = {'family' : 'normal',
+        'size'   : 16}
+    matplotlib.rc('font', **font)
+    myFmt = mdates.DateFormatter('%d.')
+    plt.gca().xaxis.set_major_formatter(myFmt)
+    
+    plt.figure(figsize=(100, 12))
+    for label, values in data.items():
+        plt.plot(values, label=label)
+    plt.title(name)
+    plt.legend(fontsize=40)
+    plt.ylim(0, 2000)
+    plt.xlabel('Time', fontsize=40)
+    plt.ylabel('Power (W)', fontsize=40)
+    plt.savefig(conf_nilm.OUTPUT_PATH + appliance + '/' + name.replace('/', '') + '.png')
+
+    plt.figure(figsize=(12, 6))
+    for label, values in data.items():
+        plt.plot(values[conf_nilm.DISPLAY_DETAIL_TIME['start_time'] : conf_nilm.DISPLAY_DETAIL_TIME['end_time']], label=label)
+    plt.title(name)
+    plt.legend()
+    plt.ylim(0, 2000)
+    plt.xlabel('Time')
+    plt.ylabel('Power (W)')
+    plt.savefig(conf_nilm.OUTPUT_PATH + appliance + '/' + name.replace('/', '') + '_detailed.png')
+    
+#     output_file = '{}{}/{}_nilm_results.pickle'.format(conf_nilm.OUTPUT_PATH, appliance, name)
+#     with open(output_file, 'wb') as l_record:
+#         pickle.dump(data, l_record)
+
 class nilm_eval():
     
-    def __init__(self, problem):
+    def __init__(self):
         np.set_printoptions(precision=3)
     
-        self.metrics = nilm_config.METRICS
-        self.appliances = nilm_config.APPLIANCES
-        self.drop_nans = nilm_config.DROP_NANS
-        self.power = nilm_config.POWER
-        self.appliances = nilm_config.APPLIANCES
-        self.window_size = nilm_config.WINDOW_SIZE
-        self.sample_period = nilm_config.SAMPLE_PERIOD
-        self.batch_size = nilm_config.BATCH_SIZE
-        self.artificial_aggregate = nilm_config.ARTIFICIAL_AGGREGATE
+        self.metrics = conf_nilm.METRICS
+        self.appliances = conf_nilm.APPLIANCES
+        self.drop_nans = conf_nilm.DROP_NANS
+        self.power = conf_nilm.POWER
+        self.appliances = conf_nilm.APPLIANCES
+        self.window_size = conf_nilm.WINDOW_SIZE
+        self.sample_period = conf_nilm.SAMPLE_PERIOD
+        self.batch_size = conf_nilm.BATCH_SIZE
+        self.artificial_aggregate = conf_nilm.ARTIFICIAL_AGGREGATE
         self.test_submeters = []
         self.errors = []
         self.errors_keys = []
-        self.do_preprocessing = nilm_config.PREPROCESSING
-        self.display_predictions = nilm_config.DISPLAY_PRED
-        self.optimizers = nilm_config.OPTIMIZERS
+        self.do_preprocessing = conf_nilm.PREPROCESSING
+        self.display_predictions = conf_nilm.DISPLAY_PRED
+        self.optimizers = conf_nilm.OPTIMIZERS
 
     def test(self):
         # store the test_main readings for all buildings
-        d = nilm_config.DATASETS_TEST
+        d = conf_data.DATASETS_TEST
 
         for dataset in d:
             print("Loading data for ",dataset, " dataset")
@@ -87,8 +130,8 @@ class nilm_eval():
                         sample_period=self.sample_period)))
                     appliance_readings.append(test_df)
 
-                if self.drop_nans:
-                    test_mains, appliance_readings = _dropna(test_mains,appliance_readings)
+#                 if self.drop_nans:
+                test_mains, appliance_readings = _dropna(test_mains,appliance_readings, drop=self.drop_nans)
                 print('appliance_readings: ', appliance_readings)
                     
                 if not appliance_readings:
@@ -113,26 +156,33 @@ class nilm_eval():
 
 
     def predict(self, test_elec, test_submeters, sample_period, timezone ):
-#         print ("Generating predictions for :",clf.MODEL_NAME)        
         """
         Generates predictions on the test dataset using the specified classifier.
         """
+        if self.display_predictions:
+            mains = None
+            for main in test_elec:
+                if not mains:
+                    mains = main
+                else:
+                    mains.append(main, ignore_index=True)
+        _make_plots(data={'Mains':mains}, name='mains')
+                    
         # "ac_type" varies according to the dataset used. 
         # Make sure to use the correct ac_type before using the default parameters in this code.   
-        #TODO run multiple times with the same variables/references? -> Make problem instantiable with constructor and data
         if self.do_preprocessing:
-            test_main_list, _ = nilm_seq2point.call_preprocessing(test_elec, submeters_lst=None, method='nilm_test', window_size=self.window_size)
+            test_main_list, _ = nilm_seq2point.preprocess_data(test_elec, submeters_lst=None, window_size=self.window_size)
             
-        main_tensors = []
+        mains = []
         mains_len = 0
         for main_df in test_main_list:
             if not main_df.empty:
                 mains_len += len(main_df)
-            main_tensors.append(tf.convert_to_tensor(main_df))
+            mains.append(main_df.to_numpy())
         if mains_len <= 1:
             raise ValueError('No mains data found in provided time frame') 
         print('num of mains:', mains_len)
-        mains_t = tf.squeeze(tf.convert_to_tensor(main_tensors))
+        mains_np = np.asarray(mains)
 
         test_predictions = []
         disggregation_dict = {}
@@ -140,35 +190,28 @@ class nilm_eval():
             for appliance in self.appliances:
                 print("=========== PREDICTION for | ", appliance, " | ", optimizer, " | =============")
                 with tf.Session() as sess:
-                    problem = nilm_seq2point.model(mode='nilm_test', mains=mains_t, mains_len=mains_len, load=True, optimizer=optimizer, appliance_name=appliance, batch_size=mains_len)()
+                    model_path = conf_nilm.MODEL_PATH + appliance + '/' + optimizer + '/'
+                    
+                    problem, mains_p, _ = nilm_seq2point.model(mode='nilm_test', model_path=model_path, optimizer=optimizer, batch_size=mains_len, predict=True)
+                    result = problem()
                     sess.run(tf.global_variables_initializer())
                     sess.run(tf.local_variables_initializer())
                     
-                    placeholders = [ op for op in sess.graph.get_operations() if op.type == "Placeholder"]
-                    print('Placeholders:', str(placeholders))
-                    
-                    prediction, inputs = sess.run(problem)
-                    print('Input: ', str(inputs))
-                    #print('Resulting loss: ', result)
+                    prediction = sess.run(result, feed_dict={mains_p:mains_np.squeeze()})
                     print('Add appl mean: ', self.appliance_params[appliance]['mean'])
                     print('Add appl std: ', self.appliance_params[appliance]['std'])
                     print('Before adjusting prediction mean: ', np.mean(prediction))
                     print('Before adjusting prediction std: ', np.std(prediction))
-                    prediction = self.appliance_params[appliance]['mean'] + prediction * self.appliance_params[appliance]['std'] #TODO make sure mean is calculated correctly in advance!
+                    prediction = self.appliance_params[appliance]['mean'] + prediction * self.appliance_params[appliance]['std']
                     print('After adjusting prediction mean: ', np.mean(prediction))
                     print('After adjusting prediction std: ', np.std(prediction))
                     valid_predictions = prediction.flatten()
                     valid_predictions = np.where(valid_predictions > 0, valid_predictions, 0)
                     df = pd.Series(valid_predictions)
                     disggregation_dict[optimizer + '_' + appliance] = df
+                    pipeline_util.log_pipeline_run(mode='test', optimizer=optimizer, metrics=self.errors)
         results = pd.DataFrame(disggregation_dict, dtype='float32')
         test_predictions.append(results)
-
-            #print('MADE PREDICTION:')
-            #print('type: ', type(test_predictions))
-            #print('len: ', len(test_predictions))
-            #print('content: ', str(test_predictions))
-        # TODO create nilm_seq2point.get_mains_and_subs_test for new method
 
         # It might not have time stamps sometimes due to neural nets
         # It has the readings for all the appliances
@@ -192,10 +235,6 @@ class nilm_eval():
             print('pred for ', app_name, ' mean: ', pred[app_name])
         pred_overall = pd.DataFrame(pred,dtype='float32')
 
-        print('gt type: ', type(gt_overall))
-        print('gt: ', gt_overall)
-        print('pred type: ', type(pred_overall))
-        print('pred: ', pred_overall)
         return gt_overall, pred_overall
 
 
@@ -203,9 +242,9 @@ class nilm_eval():
     def compute_loss(self,gt,clf_pred, loss_function):
         error = {}
         for app_name in clf_pred.columns:
-            print('APP NAME: , ', app_name)
-            print('GT: , ', gt[app_name.split('_')[-1]])
-            print('PRED: , ', clf_pred[app_name])
+            #print('APP NAME: , ', app_name)
+            #print('GT: , ', gt[app_name.split('_')[-1]])
+            #print('PRED: , ', clf_pred[app_name])
             error[app_name] = loss_function(app_gt=gt[app_name.split('_')[-1]], app_pred=clf_pred[app_name])
         return pd.Series(error)        
 
@@ -240,21 +279,14 @@ class nilm_eval():
             self.errors.append(computed_metric)
             self.errors_keys.append(self.storing_key + "_" + metric)
 
-
+        print('HEADS')
+        pred_overall.head(5)
+        gt_overall.head(5)
         if self.display_predictions:
-            for i in pred_overall.columns:
-                plt.figure()
-                #plt.plot(self.test_mains[0],label='Mains reading')
-                plt.plot(gt_overall[i.split('_')[-1]],label='Truth')
-                plt.plot(pred_overall[i],label='Pred')
-                plt.xticks(rotation=90)
-                plt.title(i)
-                plt.legend()
-                plt.xlabel('Time')
-                plt.ylabel('Power (W)')
-                #plt.yscale("log")
-                plt.savefig('./nilm_results/' + i + '.png')
-            plt.show(block=True)
+            for col in pred_overall.columns:
+                _make_plots(data={'Truth':gt_overall[col.split('_')[-1]], 'Prediction':pred_overall[col]}, name=col)
+                plt.figure(figsize=(100, 12))
+        
 
 if __name__ == "__main__":
-    nilm_eval(None).test()
+    nilm_eval().test()

@@ -203,8 +203,12 @@ def _make_nets(variables, config, net_assignments):
     nets = {}
     keys = []
     subsets = []
+#     print('NAME OT INDEX: --- ')
+#     print(name_to_index)
     with tf.variable_scope("vars_optimizer"):
       for key, names in net_assignments:
+#         print('NAMES: --- ')
+#         print(names)
         if key in nets:
           raise ValueError("Repeated netid in net_assigments.")
         nets[key] = networks.factory(**config[key])
@@ -295,11 +299,6 @@ class MetaOptimizer(object):
         # optimizee_vars contains all trainable variables (of optimizee?)
     optimizee_vars, constants = _get_variables(make_loss)
 
-#     print("Optimizee variables")
-#     print([op.name for op in optimizee_vars])
-#     print("Problem variables")
-#     print([op.name for op in constants])
-
     # Create the optimizer networks and find the subsets of variables to assign
     # to each optimizer.
     nets, net_keys, subsets = _make_nets(optimizee_vars, self._config, net_assignments)
@@ -316,7 +315,6 @@ class MetaOptimizer(object):
               [net.initial_state_for_inputs(optimizee_vars[j], dtype=tf.float32)
                for j in subset],
               name="state", trainable=False))
-    print(state)
     
     def update(net, fx, optimizee_vars, state):
       """Parameter and RNN state update."""
@@ -379,11 +377,6 @@ class MetaOptimizer(object):
       fx_final, gt, pred = _make_with_custom_variables(make_loss, x_final)
       fx_array = fx_array.write(len_unroll, fx_final)
     
-    with tf.Session() as sess:
-      gt_final = sess.run(gt)
-      print('Start ground truth appliance data has mean of ' + 
-              str(np.mean(gt_final)) + ' and std of ' + str(np.std(gt_final)) + '.')
-
     loss = tf.reduce_sum(fx_array.stack(), name="loss")
 
     # Reset the state; should be called at the beginning of an epoch.

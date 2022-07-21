@@ -88,7 +88,7 @@ def main(_):
              # Problem, NET_CONFIG = predefined conf for META-net, NET_ASSIGNMENTS = None
             net_config, net_assignments = util.get_config(conf_train.PROBLEM, net_name='rnn' if 'rnn' in optimizer_name else None)
             mains, appls = nilm_seq2point.preprocess_data(mode='train', appliance=appliance)
-            problem = nilm_seq2point.model(mode='train', appliance=appliance, mains=mains, appls=appls) 
+            problem, mains_p, appl_p = nilm_seq2point.model(mode='train', appliance=appliance) 
 
             # Optimizer setup.
             if 'rnn' in optimizer_name:
@@ -108,7 +108,7 @@ def main(_):
                         learning_rate=conf_train.LEARNING_RATE,
                         net_assignments=net_assignments,
                         second_derivatives=conf_train.SECOND_DERIVATIVES)
-                step, update, reset, cost_op, _ = minimize 
+            step, update, reset, cost_op, _ = minimize 
 
             # Data generator for multi-task learning.
             if use_imitation:
@@ -178,7 +178,8 @@ def main(_):
                                                     assign_func=assign_func,
                                                     var_x=var_x, 
                                                     step=seq_step,
-                                                    unroll_len=unroll_len)
+                                                    unroll_len=unroll_len, 
+                                                    feed_dict={mains_p:mains, appl_p:appls})
                     else:
                         data_e = data_mt.get_data(task_i, sess, num_unrolls_cur, assign_func, conf_train.RD_SCALE_BOUND,
                                                 if_scale=conf_train.USE_SCALE, mt_k=conf_train.K)
@@ -194,7 +195,8 @@ def main(_):
                                                     task_i=task_i,
                                                     data=data_e,
                                                     label_pl=mt_labels[task_i],
-                                                    input_pl=mt_inputs[task_i])
+                                                    input_pl=mt_inputs[task_i],
+                                                    feed_dict={mains_p:mains, appl_p:appls})
                     print('Finished EPOCH: ', e, ' with step: ', seq_step, ' and unroll len: ', unroll_len)
                     print ("training_loss={}".format(cost))
                     loss_records[optimizer_name].append(cost)
@@ -212,7 +214,8 @@ def main(_):
                             time, cost = util.run_epoch(sess, cost_op, [update], reset,
                                             num_unrolls_eval_cur,
                                             step=seq_step,
-                                            unroll_len=unroll_len)
+                                            unroll_len=conf_train.UNROLL_LENGTH,
+                                            feed_dict={mains_p:mains, appl_p:appls})
                             eval_cost += cost
                         validation_records[optimizer_name].append(eval_cost)
 
@@ -271,8 +274,8 @@ def main(_):
                     #      str(np.mean(pred_final)) + ' and std of ' + str(np.std(pred_final)) + '.')
                 
                 _save_optimizer_results(loss_records[optimizer_name], appliance, optimizer_name)
-        _plot_appliance_results(loss_records, appliance, optimizer_name,)
-        _plot_validation_results(validation_records, appliance, optimizer_name,)
+        _plot_appliance_results(loss_records, appliance, optimizer_name)
+        _plot_validation_results(validation_records, appliance, optimizer_name)
 
     
 def _save_optimizer_results(results, appliance, optimizer):

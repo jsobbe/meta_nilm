@@ -5,32 +5,98 @@ OUTPUT_PATH = './meta/results/1_eval/'
 SAVE_MODEL = True
 
 # Experimental setup
-NUM_RUNS = 1
-NUM_EPOCHS = 7
-NUM_STEPS = 100
-LEARNING_RATE = 0.001
+NUM_EPOCHS = 4
+NUM_STEPS = 500
+# NUM_RUNS = 9
+SEEDS = [
+    6, #15, 37, 82, 
+#     50, 93, 22, 14, 
+#     71
+] # number of seeds implies number of evaluation runs
 
 # META setup
 OPTIMIZERS = {
-    'adam':'',
-    #'adagrad':'',
-    #'momentum':'',
-    'rmsprop':'',
-    #'dm': [META_MODEL_PATH + 'dm/conv.l2l-0', META_MODEL_PATH + 'dm/fc.l2l-0'], 
-    #'dm': META_MODEL_PATH + 'dm/cw.l2l-0', 
-    #'dme': [META_MODEL_PATH + 'dme/conv.l2l-0', META_MODEL_PATH + 'dme/fc.l2l-0'], 
-    'rnn': META_MODEL_PATH + 'rnnprop/rp.l2l-0'
+    # GD variants
+#     'adam':{'path_postfix':'opt'},
+#     'sgd':{'path_postfix':'opt'},
+#     'momentum':{'path_postfix':'opt'},
+#     'adagrad':{'path_postfix':'opt'},
+#     'adadelta':{'path_postfix':'opt'},
+#     'rmsprop':{'path_postfix':'opt'},
+    
+    # BATCH
+#     'adam':{'path_postfix':'batch'},
+#       'rnn_base_b': {'path':META_MODEL_PATH + 'rnn_base/rp.l2l-0','shared_net':True, 'path_postfix':'batch'} ,
+#       'rnn_e_base_b': {'path':META_MODEL_PATH + 'rnn_e_base/rp.l2l-0','shared_net':True, 'path_postfix':'batch'} ,
+#       'rnn_no_scale': {'path':META_MODEL_PATH + 'rnn_no_scale/rp.l2l-0','shared_net':True, 'path_postfix':'batch'} , #RNN_E
+#       'rnn_double': {'path':[META_MODEL_PATH + 'rnn_e_base_nb_double/conv.l2l-0', META_MODEL_PATH + 'rnn_e_base_nb_double/fc.l2l-0'],'shared_net':False, 'path_postfix':'batch'} , #RNN_E
+#      'dm_i_base_b': {'path':[META_MODEL_PATH + 'dm_i_base/conv.l2l-0', META_MODEL_PATH + 'dm_i_base/fc.l2l-0'],'shared_net':False, 'path_postfix':'batch'} ,
+#      'dm_base_b': {'path':[META_MODEL_PATH + 'dm_base/conv.l2l-0', META_MODEL_PATH + 'dm_base/fc.l2l-0'],'shared_net':False, 'path_postfix':'batch'} ,
+#      'dm_e_base_b': {'path':[META_MODEL_PATH + 'dm_e_base/conv.l2l-0', META_MODEL_PATH + 'dm_e_base/fc.l2l-0'],'shared_net':False, 'path_postfix':'batch'} ,
+    
+    #TEST
+#       'rnn_e_long': {'path':META_MODEL_PATH + 'rnn_e_base_nb2/rp.l2l-0','shared_net':True, 'path_postfix':'long_redd_c'} ,
+#       'rnn_long': {'path':META_MODEL_PATH + 'rnn_base_nb/rp.l2l-0','shared_net':True, 'path_postfix':'long_redd_c'} ,
+#     'adam':{'path_postfix':'long_redd_c'},
+    
+#     'adam':{'path_postfix':'test'},
+#       'rnn_e_base_nb2': {'path':META_MODEL_PATH + 'rnn_e_base_nb2/rp.l2l-0','shared_net':True, 'path_postfix':'test'} ,
+    
+    #NO BATCH
+    # base
+      'rnn_e_base_nb2': {'path':META_MODEL_PATH + 'rnn_e_base_nb2/rp.l2l-0','shared_net':True, 'path_postfix':'dish'} ,
+      'rnn_base': {'path':META_MODEL_PATH + 'rnn_base_nb/rp.l2l-0','shared_net':True, 'path_postfix':'dish'} ,
+    'adam':{'path_postfix':'dish'},
+    # appls
+#       'rnn_e_appls': {'path':META_MODEL_PATH + 'rnn_e_appls/rp.l2l-0','shared_net':True, 'path_postfix':'appls'} ,
+#       'rnn_appls': {'path':META_MODEL_PATH + 'rnn_appl/rp.l2l-0','shared_net':True, 'path_postfix':'appls'} ,
+#     'adam':{'path_postfix':'appls'},
+    # data
+#       'rnn_e_data': {'path':META_MODEL_PATH + 'rnn_e_data/rp.l2l-0','shared_net':True, 'path_postfix':'data'} ,
+#       'rnn_data': {'path':META_MODEL_PATH + 'rnn_data/rp.l2l-0','shared_net':True, 'path_postfix':'data'} ,
+#     'adam':{'path_postfix':'data'},
+    # var all
+#       'rnn_e_both': {'path':META_MODEL_PATH + 'rnn_e_both/rp.l2l-0','shared_net':True, 'path_postfix':'both'} ,
+#       'rnn_both': {'path':META_MODEL_PATH + 'rnn_both/rp.l2l-0','shared_net':True, 'path_postfix':'both'} ,
+#     'adam':{'path_postfix':'both'},
+    
+    #NO BATCH iAWE
+    # base
+#       'rnn_e_base': {'path':META_MODEL_PATH + 'rnn_e_base_nb2/rp.l2l-0','shared_net':True, 'path_postfix':'base_iAWE_b'} ,
+#       'rnn_base': {'path':META_MODEL_PATH + 'rnn_base_nb/rp.l2l-0','shared_net':True, 'path_postfix':'base_iAWE_b'} ,
+#     'adam':{'path_postfix':'base_iAWE_b'},
+    # appls
+#       'rnn_e_appls': {'path':META_MODEL_PATH + 'rnn_e_appls/rp.l2l-0','shared_net':True, 'path_postfix':'appls_iAWE_b'} ,
+#       'rnn_appls': {'path':META_MODEL_PATH + 'rnn_appl/rp.l2l-0','shared_net':True, 'path_postfix':'appls_iAWE_b'} ,
+#     'adam':{'path_postfix':'appls_iAWE_b'},
+    # data
+#       'rnn_e_data': {'path':META_MODEL_PATH + 'rnn_e_data/rp.l2l-0','shared_net':True, 'path_postfix':'data_iAWE_b'} ,
+#       'rnn_data': {'path':META_MODEL_PATH + 'rnn_data/rp.l2l-0','shared_net':True, 'path_postfix':'data_iAWE_b'} ,
+#     'adam':{'path_postfix':'data_iAWE_b'},
+    # var all 
+#       'rnn_e_both': {'path':META_MODEL_PATH + 'rnn_e_both/rp.l2l-0','shared_net':True, 'path_postfix':'both_iAWE_b'} ,
+#       'rnn_both': {'path':META_MODEL_PATH + 'rnn_both/rp.l2l-0','shared_net':True, 'path_postfix':'both_iAWE_b'} ,
+#     'adam':{'path_postfix':'both_iAWE_b'},
+    
 }
-PROBLEM = 'nilm_seq'
+PROBLEM = 'nilm_seq' #TODO remove
 APPLIANCES = [
-    'fridge', 
+#     'stove', 
+#     'lighting', 
+#     'washer dryer',
+#     'kitchen',
+#     'fridge', 
+#     'kettle', 
+#     'air conditioner',
+#     'water kettle', 
     #'washing machine', 
-    #'dish washer',
-    #'oven', 
-    #'microwave'
+    'dish washer',
+#     'oven', 
+    #'microwave', 
 ]
 
 
-# RNNPROP
+# Analytic optimizers
+LEARNING_RATE = 0.001 
 BETA_1 = 0.95
 BETA_2 = 0.95
