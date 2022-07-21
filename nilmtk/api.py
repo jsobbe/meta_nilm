@@ -40,7 +40,7 @@ class API():
         self.sample_period = params.get("sample_rate", 1)
         self.artificial_aggregate = params.get('artificial_aggregate', False)
         self.chunk_size = params.get('chunk_size', None)
-        self.display_predictions = params.get('display_predictions', False)
+        self.display_predictions = params.get('display_predictions', True)
         self.DROP_ALL_NANS = params.get("DROP_ALL_NANS", True)
         self.site_only = params.get('site_only',False)
         self.experiment()
@@ -207,6 +207,7 @@ class API():
             print("Loading data for ",dataset, " dataset")
             train=DataSet(d[dataset]['path'])
             for building in d[dataset]['buildings']:
+                print('Meters for building ', building, ': ', str(train.buildings[building].elec))
                 print("Loading building ... ",building)
                 train.set_window(start=d[dataset]['buildings'][building]['start_time'],end=d[dataset]['buildings'][building]['end_time'])
                 train_df = next(train.buildings[building].elec.mains().load(physical_quantity='power', ac_type=self.power['mains'], sample_period=self.sample_period))
@@ -306,6 +307,7 @@ class API():
                                 
                 clf=self.methods[name]
                 self.classifiers.append((name,clf))
+                print('Added classifier ', name, ': ', str(clf))
 
             except Exception as e:
                 print ("\n\nThe method {model_name} specied does not exist. \n\n".format(model_name=name))
@@ -348,7 +350,7 @@ class API():
         if self.display_predictions:
             if self.site_only != True:
                 for i in gt_overall.columns:
-                    plt.figure()
+                    plt.figure(figsize=(100, 12))
                     #plt.plot(self.test_mains[0],label='Mains reading')
                     plt.plot(gt_overall[i],label='Truth')
                     for clf in pred_overall:                
@@ -358,6 +360,7 @@ class API():
                     plt.legend()
                     plt.xlabel('Time')
                     plt.ylabel('Power (W)')
+                plt.savefig('./nilmtk.png')
                 plt.show()
         
     def predict(self, clf, test_elec, test_submeters, sample_period, timezone ):
