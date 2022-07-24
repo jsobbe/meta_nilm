@@ -25,11 +25,6 @@ DATASETS_TRAIN = {
 #     'buildings': {
 #         1: {'start_time': '2013-07-13', 'end_time': '2013-08-04'} 
 #     }}}
-# DATASETS_EVAL = {'UKDALE':{
-#     'path': './data/ukdale.h5',
-#     'buildings': {
-#         1: {'start_time': '2013-04-01', 'end_time': '2013-05-31'} 
-#     }}}
 DATASETS_EVAL = {
     'redd':{
         'path': './data/redd.h5',
