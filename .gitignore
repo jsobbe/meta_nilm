@@ -130,3 +130,6 @@ dmypy.json
 
 # nilm data files
 *.h5
+
+# plots
+*.png
