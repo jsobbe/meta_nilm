@@ -8,8 +8,8 @@ SAVE_MODEL = True
 NUM_EPOCHS = 4
 NUM_STEPS = 500
 # NUM_RUNS = 9
-SEEDS = [
-    6, #15, 37, 82, 
+SEEDS = [ 
+    6, 15, 37, 82, 
 #     50, 93, 22, 14, 
 #     71
 ] # number of seeds implies number of evaluation runs
@@ -17,36 +17,26 @@ SEEDS = [
 # META setup
 OPTIMIZERS = {
     # GD variants
-#     'adam':{'path_postfix':'opt'},
-#     'sgd':{'path_postfix':'opt'},
-#     'momentum':{'path_postfix':'opt'},
-#     'adagrad':{'path_postfix':'opt'},
-#     'adadelta':{'path_postfix':'opt'},
-#     'rmsprop':{'path_postfix':'opt'},
+    'adam':{'path_postfix':'opt'},
+    'sgd':{'path_postfix':'opt'},
+    'momentum':{'path_postfix':'opt'},
+    'adagrad':{'path_postfix':'opt'},
+    'adadelta':{'path_postfix':'opt'},
+    'rmsprop':{'path_postfix':'opt'},
     
     # BATCH
 #     'adam':{'path_postfix':'batch'},
-#       'rnn_base_b': {'path':META_MODEL_PATH + 'rnn_base/rp.l2l-0','shared_net':True, 'path_postfix':'batch'} ,
-#       'rnn_e_base_b': {'path':META_MODEL_PATH + 'rnn_e_base/rp.l2l-0','shared_net':True, 'path_postfix':'batch'} ,
-#       'rnn_no_scale': {'path':META_MODEL_PATH + 'rnn_no_scale/rp.l2l-0','shared_net':True, 'path_postfix':'batch'} , #RNN_E
-#       'rnn_double': {'path':[META_MODEL_PATH + 'rnn_e_base_nb_double/conv.l2l-0', META_MODEL_PATH + 'rnn_e_base_nb_double/fc.l2l-0'],'shared_net':False, 'path_postfix':'batch'} , #RNN_E
-#      'dm_i_base_b': {'path':[META_MODEL_PATH + 'dm_i_base/conv.l2l-0', META_MODEL_PATH + 'dm_i_base/fc.l2l-0'],'shared_net':False, 'path_postfix':'batch'} ,
-#      'dm_base_b': {'path':[META_MODEL_PATH + 'dm_base/conv.l2l-0', META_MODEL_PATH + 'dm_base/fc.l2l-0'],'shared_net':False, 'path_postfix':'batch'} ,
-#      'dm_e_base_b': {'path':[META_MODEL_PATH + 'dm_e_base/conv.l2l-0', META_MODEL_PATH + 'dm_e_base/fc.l2l-0'],'shared_net':False, 'path_postfix':'batch'} ,
-    
-    #TEST
-#       'rnn_e_long': {'path':META_MODEL_PATH + 'rnn_e_base_nb2/rp.l2l-0','shared_net':True, 'path_postfix':'long_redd_c'} ,
-#       'rnn_long': {'path':META_MODEL_PATH + 'rnn_base_nb/rp.l2l-0','shared_net':True, 'path_postfix':'long_redd_c'} ,
-#     'adam':{'path_postfix':'long_redd_c'},
-    
-#     'adam':{'path_postfix':'test'},
-#       'rnn_e_base_nb2': {'path':META_MODEL_PATH + 'rnn_e_base_nb2/rp.l2l-0','shared_net':True, 'path_postfix':'test'} ,
+#       'rnn_base_b': {'path':META_MODEL_PATH + 'rnn_base_b/rp.l2l-0','shared_net':True, 'path_postfix':'batch'} ,
+#       'rnn_e_base_b': {'path':META_MODEL_PATH + 'rnn_e_base_b/rp.l2l-0','shared_net':True, 'path_postfix':'batch'} ,
+#      'dm_i_base_b': {'path':[META_MODEL_PATH + 'dm_i_base_b/conv.l2l-0', META_MODEL_PATH + 'dm_i_base_b/fc.l2l-0'],'shared_net':False, 'path_postfix':'batch'} ,
+#      'dm_base_b': {'path':[META_MODEL_PATH + 'dm_base_b/conv.l2l-0', META_MODEL_PATH + 'dm_base_b/fc.l2l-0'],'shared_net':False, 'path_postfix':'batch'} ,
+#      'dm_e_base_b': {'path':[META_MODEL_PATH + 'dm_e_base_b/conv.l2l-0', META_MODEL_PATH + 'dm_e_base_b/fc.l2l-0'],'shared_net':False, 'path_postfix':'batch'} ,
     
     #NO BATCH
     # base
-      'rnn_e_base_nb2': {'path':META_MODEL_PATH + 'rnn_e_base_nb2/rp.l2l-0','shared_net':True, 'path_postfix':'dish'} ,
-      'rnn_base': {'path':META_MODEL_PATH + 'rnn_base_nb/rp.l2l-0','shared_net':True, 'path_postfix':'dish'} ,
-    'adam':{'path_postfix':'dish'},
+#       'rnn_e_base': {'path':META_MODEL_PATH + 'rnn_e_base_nb2/rp.l2l-0','shared_net':True, 'path_postfix':'base'} ,
+#       'rnn_base': {'path':META_MODEL_PATH + 'rnn_base_nb/rp.l2l-0','shared_net':True, 'path_postfix':'base'} ,
+#     'adam':{'path_postfix':'base'},
     # appls
 #       'rnn_e_appls': {'path':META_MODEL_PATH + 'rnn_e_appls/rp.l2l-0','shared_net':True, 'path_postfix':'appls'} ,
 #       'rnn_appls': {'path':META_MODEL_PATH + 'rnn_appl/rp.l2l-0','shared_net':True, 'path_postfix':'appls'} ,
@@ -85,12 +75,12 @@ APPLIANCES = [
 #     'lighting', 
 #     'washer dryer',
 #     'kitchen',
-#     'fridge', 
+    'fridge', 
 #     'kettle', 
 #     'air conditioner',
 #     'water kettle', 
     #'washing machine', 
-    'dish washer',
+#     'dish washer',
 #     'oven', 
     #'microwave', 
 ]
