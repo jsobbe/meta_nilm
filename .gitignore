@@ -137,3 +137,6 @@ dmypy.json
 *.pickle-nilm_seq
 *.out
 *.npy
+*.txt
+*.csv
+*.pkl
