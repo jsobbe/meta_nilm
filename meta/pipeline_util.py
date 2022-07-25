@@ -1,3 +1,7 @@
+"""
+Provides util methods mainly for logging in the pipeline.
+"""
+
 import conf_nilm
 import conf_eval
 import conf_train
@@ -8,7 +12,6 @@ import datetime
 
 PATH = './meta/logs/runs/'
 
-# TODO datasets
 def log_pipeline_run(mode, optimizer=None, runtime=None, final_loss=None, avg_loss=None, result=None, metrics=None):
     try:
         df = pd.read_pickle(PATH + 'log_' + mode + '_final.pkl')

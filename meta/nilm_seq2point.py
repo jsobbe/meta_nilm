@@ -1,4 +1,8 @@
-# TODO check imports!!
+"""
+This is a reimplementation of the Seq2Point network from the nilmtk-contrib. It uses older tensorflow libraries for compatibility with the Open-L2O.
+The implementation uses adapted code from both the NILM-TK and the Open-L2O.
+"""
+
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function

@@ -42,7 +42,7 @@ DATASETS_TEST = {
     'redd':{
         'path': './data/redd.h5',
             'buildings': {
-                1: {'start_time': '2011-04-01', 'end_time': '2011-05-31'}
+                1: {'start_time': '2011-04-01', 'end_time': '2011-05-28'}
     }}}
 # DATASETS_TEST = {'UKDALE':{
 #     'path': './data/ukdale.h5',

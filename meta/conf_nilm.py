@@ -4,7 +4,7 @@ OUTPUT_PATH = './meta/results/2_nilm/'
 MODEL_PATH = './meta/models/_nilm/'
 
 # Evaluation parameters
-APPLIANCES = ['dish washer']
+APPLIANCES = ['fridge']
 METRICS = ['mae', 
           'rmse',
           'nep']
@@ -15,20 +15,18 @@ OPTIMIZERS = [
 #     'adadelta',
 #     'rmsprop',
 #     'adam',
-#     'adam/base_iAWE',
-#     'rnn_base/test_iAWE',
-#     'rnn_e_base_nb2/test_iAWE',
-#     'adam/base_iAWE',
-#     'rnn_test/test_iAWE',
-#     'rnn_e_test/test_iAWE',
-#     'rnn_no_batch',
-#     'rnn_i_base',
-    'dish washer/adam', 
-    'dish washer/rnn_base', 
-    'dish washer/rnn_e_base_nb2', 
+#     'rnn_both/both',
+#     'rnn_e_both/both',
+#     'adam/both',
+    'rnn_base/base',
+    'rnn_e_base_nb2/base',
+    'adam/base',
+#     'dish washer/adam', 
+#     'dish washer/rnn_base', 
+#     'dish washer/rnn_e_base_nb2', 
 ]
 DISPLAY_PRED = True
-DISPLAY_DETAIL_TIME = {'start_time': '2013-07-21 06:00:00', 'end_time': '2013-07-23 12:00:00'}
+DISPLAY_DETAIL_TIME = {'start_time': '2011-04-21 06:00:00', 'end_time': '2011-04-21 12:00:00'}
 
 
 

@@ -12,8 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Learning 2 Learn evaluation."""
-
+"""
+Meta-Evaluation.
+The implementation uses adapted code from the Open-L2O.
+"""
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function

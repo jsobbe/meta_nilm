@@ -59,9 +59,12 @@ def _make_plots(data, name):
         os.mkdir(conf_nilm.OUTPUT_PATH + appliance + '/')
     
     font = {'family' : 'normal',
-        'size'   : 16}
+        'size'   : 22}
+
     matplotlib.rc('font', **font)
-    myFmt = mdates.DateFormatter('%d.')
+    matplotlib.rc('xtick', labelsize=16) 
+    matplotlib.rc('ytick', labelsize=16)
+    myFmt = mdates.DateFormatter('%H')
     plt.gca().xaxis.set_major_formatter(myFmt)
     
     plt.figure(figsize=(100, 12))
@@ -69,7 +72,7 @@ def _make_plots(data, name):
         plt.plot(values, label=label)
     plt.title(name)
     plt.legend(fontsize=40)
-    plt.ylim(0, 2000)
+    plt.ylim(0, 1000)
     plt.xlabel('Time', fontsize=40)
     plt.ylabel('Power (W)', fontsize=40)
     plt.savefig(conf_nilm.OUTPUT_PATH + appliance + '/' + name.replace('/', '') + '.png')
@@ -79,12 +82,14 @@ def _make_plots(data, name):
         plt.plot(values[conf_nilm.DISPLAY_DETAIL_TIME['start_time'] : conf_nilm.DISPLAY_DETAIL_TIME['end_time']], label=label)
     plt.title(name)
     plt.legend()
-    plt.ylim(0, 2000)
+    plt.ylim(0, 1000)
+    plt.xticks([])
     plt.xlabel('Time')
     plt.ylabel('Power (W)')
-    plt.savefig(conf_nilm.OUTPUT_PATH + appliance + '/' + name.replace('/', '') + '_detailed.png')
+    plt.savefig(conf_nilm.OUTPUT_PATH + appliance + '/' + name.replace('/', '_') + '_detailed.svg')
+    plt.savefig(conf_nilm.OUTPUT_PATH + appliance + '/' + name.replace('/', '_') + '_detailed.png')
     
-#     output_file = '{}{}/{}_nilm_results.pickle'.format(conf_nilm.OUTPUT_PATH, appliance, name)
+#     output_file = '{}{}/{}_nilm_results.pickle'.format(conf_nilm.OUTPUT_PATH, appliance, name.replace('/', '_'))
 #     with open(output_file, 'wb') as l_record:
 #         pickle.dump(data, l_record)
 
