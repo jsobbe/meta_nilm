@@ -133,3 +133,11 @@ dmypy.json
 
 # plots
 *.png
+
+# directories with log and result files
+*/results/0_train/*
+*/results/2_nilm/*
+*/logs/0_train/*
+*/logs/1_eval/*
+*/models/_nilm/*
+*/logs/2_nilm/*
