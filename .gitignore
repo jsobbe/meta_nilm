@@ -131,14 +131,9 @@ dmypy.json
 # nilm data files
 *.h5
 
-# plots
+# results
 *.png
 *.svg
-
-# directories with log and result files
-*/results/0_train/*.pickle-nilm_seq
-*/results/2_nilm/*.pickle-nilm_seq
-*/logs/0_train/*.out
-*/logs/1_eval/*.out
-*/logs/2_nilm/*.out
-*/models/_nilm/*.npy
+*.pickle-nilm_seq
+*.out
+*.npy
